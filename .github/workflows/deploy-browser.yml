@@ -1,5 +1,12 @@
 name: Deploy Sawari Browser Game
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'browser/**'
+      - 'index.html'
+      - 'README.md'
+      - '.github/workflows/deploy-browser.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,6 +24,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Check browser JavaScript syntax
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path("browser/index.html").read_text(encoding="utf-8")
+          match = re.search(r'<script type="module">([\s\S]*?)</script>', html)
+          if not match:
+              raise SystemExit("Could not find browser module script")
+          Path("/tmp/sawari-browser.mjs").write_text(match.group(1), encoding="utf-8")
+          PY
+          node --check /tmp/sawari-browser.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload site
