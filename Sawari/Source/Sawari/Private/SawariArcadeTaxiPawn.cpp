@@ -189,29 +189,29 @@ void ASawariArcadeTaxiPawn::Tick(float DeltaSeconds)
 
     if (DriveInput > 0.0f)
     {
-        PhysicsBody->AddForce(Forward * DriveInput * 820000.0f);
+        PhysicsBody->AddForce(Forward * DriveInput * 820000.0f, NAME_None, false);
     }
     else if (DriveInput < 0.0f)
     {
         if (ForwardSpeed > 180.0f)
-            PhysicsBody->AddForce(-Velocity.GetSafeNormal() * (-DriveInput) * 980000.0f);
+            PhysicsBody->AddForce(-Velocity.GetSafeNormal() * (-DriveInput) * 980000.0f, NAME_None, false);
         else
-            PhysicsBody->AddForce(-Forward * (-DriveInput) * 520000.0f);
+            PhysicsBody->AddForce(-Forward * (-DriveInput) * 520000.0f, NAME_None, false);
     }
 
     if (bHandbrake && Speed > 1.0f)
-        PhysicsBody->AddForce(-Velocity.GetSafeNormal() * 1050000.0f);
+        PhysicsBody->AddForce(-Velocity.GetSafeNormal() * 1050000.0f, NAME_None, false);
 
     const float SideGrip = bHandbrake ? 45.0f : 190.0f;
-    PhysicsBody->AddForce(-Right * SideSpeed * SideGrip);
-    PhysicsBody->AddForce(-Velocity * 0.18f);
+    PhysicsBody->AddForce(-Right * SideSpeed * SideGrip, NAME_None, false);
+    PhysicsBody->AddForce(-Velocity * 0.18f, NAME_None, false);
 
     const float SpeedAlpha = FMath::Clamp(FMath::Abs(ForwardSpeed) / 2200.0f, 0.0f, 1.0f);
     if (FMath::Abs(ForwardSpeed) > 80.0f)
-        PhysicsBody->AddTorqueInRadians(FVector::UpVector * SteeringInput * SpeedAlpha * 26000000.0f);
+        PhysicsBody->AddTorqueInRadians(FVector::UpVector * SteeringInput * SpeedAlpha * 26000000.0f, NAME_None, false);
 
     if (Speed > 6200.0f)
-        PhysicsBody->AddForce(-Velocity.GetSafeNormal() * (Speed - 6200.0f) * 850.0f);
+        PhysicsBody->AddForce(-Velocity.GetSafeNormal() * (Speed - 6200.0f) * 850.0f, NAME_None, false);
 
     WheelSpinDegrees += (ForwardSpeed / 38.0f) * 57.2958f * DeltaSeconds;
     for (int32 Index = 0; Index < WheelVisuals.Num(); ++Index)
