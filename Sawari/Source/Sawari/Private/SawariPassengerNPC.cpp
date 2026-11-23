@@ -41,11 +41,11 @@ ASawariPassengerNPC::ASawariPassengerNPC()
     const FLinearColor Shirt(0.10f, 0.27f, 0.56f);
     const FLinearColor Trousers(0.08f, 0.095f, 0.13f);
     const FLinearColor HairColor(0.045f, 0.035f, 0.025f);
-    Torso = Part(TEXT("PassengerTorso"), Cube.Object, FVector(0, 0, 92), FVector(0.30f, 0.22f, 0.48f), Shirt);
-    Head = Part(TEXT("PassengerHead"), Sphere.Object, FVector(0, 0, 165), FVector(0.19f, 0.19f, 0.22f), Skin);
-    Hair = Part(TEXT("PassengerHair"), Sphere.Object, FVector(-2, 0, 177), FVector(0.195f, 0.195f, 0.10f), HairColor);
-    LeftArm = Part(TEXT("PassengerLeftArm"), Cube.Object, FVector(0, -28, 97), FVector(0.13f, 0.12f, 0.44f), Shirt);
-    RightArm = Part(TEXT("PassengerRightArm"), Cube.Object, FVector(0, 28, 97), FVector(0.13f, 0.12f, 0.44f), Shirt);
-    LeftLeg = Part(TEXT("PassengerLeftLeg"), Cube.Object, FVector(0, -13, 35), FVector(0.14f, 0.14f, 0.36f), Trousers);
-    RightLeg = Part(TEXT("PassengerRightLeg"), Cube.Object, FVector(0, 13, 35), FVector(0.14f, 0.14f, 0.36f), Trousers);
+    Torso = Part(TEXT("PassengerTorso"), Cube.Object, FVector(0, 0, 111), FVector(0.32f, 0.24f, 0.70f), Shirt);
+    Head = Part(TEXT("PassengerHead"), Sphere.Object, FVector(0, 0, 158), FVector(0.18f, 0.18f, 0.20f), Skin);
+    Hair = Part(TEXT("PassengerHair"), Sphere.Object, FVector(-2, 0, 166), FVector(0.185f, 0.185f, 0.10f), HairColor);
+    LeftArm = Part(TEXT("PassengerLeftArm"), Cube.Object, FVector(0, -30, 111), FVector(0.13f, 0.12f, 0.68f), Shirt);
+    RightArm = Part(TEXT("PassengerRightArm"), Cube.Object, FVector(0, 30, 111), FVector(0.13f, 0.12f, 0.68f), Shirt);
+    LeftLeg = Part(TEXT("PassengerLeftLeg"), Cube.Object, FVector(0, -14, 38), FVector(0.15f, 0.15f, 0.76f), Trousers);
+    RightLeg = Part(TEXT("PassengerRightLeg"), Cube.Object, FVector(0, 14, 38), FVector(0.15f, 0.15f, 0.76f), Trousers);
 }
