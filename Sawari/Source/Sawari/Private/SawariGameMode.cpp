@@ -171,7 +171,6 @@ void ASawariGameMode::UpdateNavigation(float DeltaSeconds)
     NavigationRetryTimer += DeltaSeconds;
 
     int32 ClosestSegment = INDEX_NONE;
-    float ClosestAlpha = 0.0f;
     FVector ClosestPoint = FVector::ZeroVector;
     double ClosestDistanceSquared = TNumericLimits<double>::Max();
 
@@ -195,7 +194,6 @@ void ASawariGameMode::UpdateNavigation(float DeltaSeconds)
             {
                 ClosestDistanceSquared = DistanceSquared;
                 ClosestSegment = Index;
-                ClosestAlpha = Alpha;
                 ClosestPoint = Candidate;
             }
         }
@@ -217,6 +215,9 @@ void ASawariGameMode::UpdateNavigation(float DeltaSeconds)
         NavigationRoute.Reset();
         bNavigationRouteValid = RealCity && RealCity->IsOSMDataLoaded()
             && RealCity->FindDrivingRoute(TaxiLocation, Target, NavigationRoute);
+        // The closest segment above belongs to the previous route (or no
+        // route). Re-evaluate against this route on the next frame.
+        ClosestSegment = INDEX_NONE;
     }
 
     if (!bNavigationRouteValid || ClosestSegment == INDEX_NONE)
