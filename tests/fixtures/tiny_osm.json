@@ -1,0 +1,18 @@
+{
+  "elements": [
+    {
+      "type": "way", "id": 101,
+      "tags": {"highway": "residential", "name": "Test Street"},
+      "geometry": [{"lat": 24.85, "lon": 67.01}, {"lat": 24.851, "lon": 67.011}]
+    },
+    {
+      "type": "way", "id": 202,
+      "tags": {"building": "residential", "building:levels": "2"},
+      "geometry": [{"lat": 24.85, "lon": 67.01}, {"lat": 24.85, "lon": 67.0102}, {"lat": 24.8502, "lon": 67.0102}, {"lat": 24.85, "lon": 67.01}]
+    },
+    {
+      "type": "node", "id": 303, "lat": 24.85, "lon": 67.01,
+      "tags": {"amenity": "fuel", "name": "Test Petrol Pump"}
+    }
+  ]
+}
