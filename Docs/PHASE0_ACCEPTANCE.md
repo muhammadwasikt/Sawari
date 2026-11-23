@@ -13,7 +13,7 @@ This milestone advances the project from a generic city blockout toward a real S
 - Chaos four-wheel taxi base with wheel classes, front/rear suspension and engine torque configuration.
 - Blender taxi FBX generator with chassis and four named wheel bones.
 - Unreal Python helper to import the taxi Skeletal Mesh and request Physics Asset generation.
-- GameMode selection logic: real OSM corridor when staged, real Chaos taxi when the rigged mesh and Physics Asset are imported; otherwise the prior prototype fallback remains available.
+- GameMode selection logic: real OSM corridor when staged, real Chaos taxi only when the rigged mesh, Physics Asset and Wheel Controller Animation Blueprint are all available; otherwise the prior prototype fallback remains available.
 - HUD speed/checkpoint distance read from the active GameMode and active map coordinates.
 
 ## Local build pipeline

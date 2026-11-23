@@ -289,5 +289,6 @@ bool ASawariTaxiPawn::IsChaosVehicleConfigured() const
     const UChaosWheeledVehicleMovementComponent* Movement = GetChaosMovement();
     return GetMesh() && GetMesh()->GetSkeletalMeshAsset()
         && GetMesh()->GetPhysicsAsset()
+        && GetMesh()->GetAnimClass()
         && Movement && Movement->WheelSetups.Num() == 4;
 }

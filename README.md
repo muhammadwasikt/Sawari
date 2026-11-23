@@ -10,7 +10,7 @@ The latest source changes are committed to GitHub, but this environment cannot l
 
 The game selects the most complete local setup available:
 - If OSM GeoJSON is staged, GameMode loads the real corridor roads/building footprints and uses their drivable road polylines for AI traffic. If the files are missing, the earlier procedural city blockout remains as a fallback.
-- If the rigged taxi Skeletal Mesh and generated Physics Asset are imported, GameMode selects the Chaos four-wheel taxi. Otherwise, the self-contained arcade-physics taxi remains the fallback.
+- If the rigged taxi Skeletal Mesh, generated Physics Asset and Wheel Controller Animation Blueprint are all present, GameMode selects the Chaos four-wheel taxi. Otherwise, the self-contained arcade-physics taxi remains the fallback.
 - The Chaos taxi still needs its Wheel Controller Animation Blueprint created in Unreal Editor so the four skeletal wheel bones visually follow the physics wheels.
 
 ## What this iteration adds in source
@@ -98,7 +98,7 @@ In Unreal Editor:
 
        /Game/Vehicles/Taxi/ABP_SawariTaxi
 
-The C++ taxi pawn automatically assigns this Animation Blueprint when it exists. Without it, the physics movement may be configured but the skeletal wheels will not receive the intended Wheel Controller animation.
+The C++ taxi pawn automatically assigns this Animation Blueprint when it exists. GameMode requires it, along with the Skeletal Mesh and Physics Asset, before selecting the Chaos taxi; otherwise the arcade fallback is used until the full rig is ready.
 
 ## 4. Open the playable prototype
 
@@ -114,7 +114,7 @@ The script creates and saves /Game/Maps/L_SawariPrototype and assigns SawariGame
 
 At runtime:
 - With the staged OSM data, the real Saddar–Clifton road/building meshes, pickup/drop-off markers and road-based traffic load.
-- With the imported taxi Skeletal Mesh and Physics Asset, the Chaos four-wheel taxi is selected.
+- With the imported taxi Skeletal Mesh, Physics Asset and Wheel Controller Animation Blueprint, the Chaos four-wheel taxi is selected.
 - If either asset/data stage is missing, the corresponding prototype fallback is used and the Output Log states which path was selected.
 
 ## Controls
