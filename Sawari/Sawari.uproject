@@ -2,11 +2,13 @@
   "FileVersion": 3,
   "EngineAssociation": "5.8",
   "Category": "Games",
-  "Description": "Sawari - Real City Taxi Simulator. Phase 0 foundation.",
+  "Description": "Sawari - Real City Taxi Simulator. Phase 0 playable prototype.",
   "Modules": [{"Name":"Sawari","Type":"Runtime","LoadingPhase":"Default"}],
   "Plugins": [
     {"Name":"ChaosVehiclesPlugin","Enabled":true},
     {"Name":"EnhancedInput","Enabled":false},
-    {"Name":"CesiumForUnreal","Enabled":false}
+    {"Name":"CesiumForUnreal","Enabled":false},
+    {"Name":"PythonScriptPlugin","Enabled":true},
+    {"Name":"EditorScriptingUtilities","Enabled":true}
   ]
 }

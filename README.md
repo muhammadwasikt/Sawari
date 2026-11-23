@@ -1,97 +1,90 @@
 # SAWARI — Real City Taxi Simulator
 
-**Phase 0 engineering foundation · Unreal Engine 5.8 · Karachi, Pakistan**
+**Phase 0 playable prototype foundation · Unreal Engine 5.8 · Karachi, Pakistan**
 
-Sawari is a real-city taxi / ride-hailing simulator based on the supplied game development plan. The first milestone is deliberately small: validate a Saddar Karachi OpenStreetMap (OSM) data pipeline, establish the Chaos Vehicles taxi pawn, and implement a complete single-player passenger ride state flow.
+Sawari follows the supplied Real City Taxi Simulator plan. This repository now contains a self-contained first-playable prototype foundation: a physics-driven taxi pawn, a procedural Karachi-style boulevard blockout, a visible passenger character, a ride HUD, and pickup/drop-off checkpoints that update the in-game wallet.
 
-## Current repository status
+## Honest build status
 
-This repository contains source scaffolding and build-time tooling, not a compiled or playable game build. Unreal C++ compilation, Editor launch, vehicle-asset setup and end-to-end gameplay testing have not yet been completed.
+The source has been committed to GitHub, but it has **not yet been compiled or launched in Unreal Editor** in this environment. Treat this as implementation source awaiting an Unreal 5.8 compile and hands-on physics tuning, not as a verified packaged game.
 
-Included:
-- Unreal Engine 5.8 C++ project skeleton and project descriptor
-- Chaos Vehicles taxi pawn base with keyboard input bindings and Chase / Bonnet / Cockpit camera switching
-- Single-player ride subsystem: request → accept → pickup → drop-off, fare calculation and 85% driver / 15% platform split
-- Saddar OSM extractor producing roads, building footprints and POI GeoJSON layers
-- Blender LoD1 city-massing exporter for roads, buildings and validation POI markers
-- Automated test for OSM JSON conversion
+The current taxi is a self-contained arcade-physics fallback using a physics box chassis and modular visual body/wheel pieces. It can be controlled without a third-party vehicle mesh, but it is not yet a full Chaos four-wheel suspension simulation. The existing Chaos Vehicles base class remains available for a later configured skeletal-mesh taxi.
 
-Not included yet:
-- Configured taxi Skeletal Mesh, Physics Asset, Chaos wheel assets or torque curve
-- Playable Unreal map, finished HUD/navigation widgets, pedestrian/traffic AI or detailed landmark art
-- Bundled processed Karachi city assets, packaged Windows/Android builds or multiplayer services
+The current procedural city is a first visual/gameplay blockout, not the final imported real Karachi OSM map. Its buildings are blockout geometry and its main boulevard is laid out to test the demo ride distances. The Saddar OSM extraction and Blender city-massing pipeline remain separate development-time tools.
 
-## Project structure
+## What's implemented in source
 
-- Sawari/ — Unreal project, configuration and C++ gameplay foundation
-- Scripts/ — development-time OSM download and GeoJSON conversion
-- Blender/ — first 3D city blockout exporter
-- Docs/ — Phase 0 acceptance criteria
-- tests/ — OSM conversion test and fixture
+- Unreal Engine 5.8 C++ project and game module.
+- Taxi pawn with physics-driven acceleration, braking/reverse, steering, lateral grip, handbrake, speed limiting and three camera views.
+- Native HUD with speed, wallet, ride state, fare and next-checkpoint distance.
+- Procedural 3D blockout: ground, long boulevard, side roads, lane markings, sidewalks, low-rise city blocks, daylight sky, sun and atmospheric haze.
+- Visible passenger built from human-shaped 3D components.
+- Ride flow: request → accept → drive to passenger → automatic pickup → drive to destination → automatic drop-off.
+- Fare calculation from the project's Economy rates, with 85% driver payout and 15% platform fee.
+- Saddar OSM extraction, Blender massing export and Python converter test.
 
-## Requirements
+## Create the Unreal map once
 
+Requirements:
 - Unreal Engine 5.8
 - Visual Studio 2022 with Desktop development with C++ and Game development with C++
-- Blender 4.x
-- Python 3.10+
-- Unreal Chaos Vehicles plugin enabled
-- Cesium for Unreal 2.31.0 for UE 5.8 is an optional city-streaming integration; install its matching package before enabling it
+- PythonScriptPlugin and EditorScriptingUtilities enabled (both are enabled in the project descriptor)
 
-## Build the Saddar data blockout
+1. Open Sawari/Sawari.uproject in Unreal Engine 5.8.
+2. Generate project files if prompted, then build the SawariEditor target in Visual Studio.
+3. In Unreal Editor, open the Python console through Window → Developer Tools → Output Log. In the command line at the bottom, run the script using its absolute path:
+
+       py "C:/FULL/PATH/TO/Sawari/Scripts/create_sawari_level.py"
+
+4. The script creates and saves /Game/Maps/L_SawariPrototype, assigns SawariGameMode, and updates the project default map settings. Restart the editor once after the first run.
+
+If the Python command is unavailable, verify that PythonScriptPlugin and EditorScriptingUtilities are enabled in the Plugins panel, then restart Unreal Editor.
+
+## Play the prototype
+
+Open L_SawariPrototype and press Play. GameMode spawns the taxi, city and passenger automatically. A sample Ahmed K. ride request is ready.
+
+| Control | Action |
+|---|---|
+| W | Accelerate |
+| S | Brake while moving forward; reverse when nearly stopped |
+| A / D | Steer |
+| Space | Handbrake |
+| V | Cycle chase / bonnet / cockpit camera |
+| E | Accept current ride |
+| Q | Decline current request |
+| R | Generate the next ride after completing or declining |
+
+Ride flow:
+1. Press E to accept the sample request.
+2. Drive to the yellow pickup beacon beside the visible passenger in the Saddar blockout.
+3. When the taxi is close enough, pickup happens automatically and the passenger boards.
+4. Drive along the boulevard to the green Clifton destination beacon.
+5. Drop-off happens automatically, fare is calculated and the driver's share is added to the wallet.
+
+The sample ride uses the plan's 1.2 km pickup leg, 5 km passenger trip, and Economy fare values. The current prototype uses a straight boulevard and distance-to-checkpoint HUD guidance; turn-by-turn road routing is not integrated yet.
+
+## Real Saddar OSM data pipeline
 
 From the repository root:
 
     python Scripts/fetch_saddar_osm.py
 
-The script downloads a small starter test bounding box around Saddar, not the final playable district boundary. It writes roads.geojson, buildings.geojson, pois.geojson and manifest.json under SourceData/Saddar. Network access is required only for this development-time extraction. The final single-player game should use bundled city data and must not call Overpass while playing.
+This downloads a small starter test bounding box around Saddar, not the final playable district boundary. It writes roads.geojson, buildings.geojson, pois.geojson and manifest.json under SourceData/Saddar. Network access is required only for this development-time extraction. The final single-player game should use bundled city data and must not call Overpass while playing.
 
 Then run Blender:
 
     blender --background --python Blender/build_saddar_city.py -- --input SourceData/Saddar --output Exports/Saddar_Blockout.fbx
 
-Import the FBX into Unreal and validate scale, orientation, origin and collision. This creates a first low-detail massing blockout, not photogrammetry or a photorealistic copy. Building heights without OSM height/levels tags are estimates. Major landmarks and facades require a separate manual art pass.
+Import the FBX into Unreal and validate scale, orientation, origin and collision. This is a first low-detail massing export, not photogrammetry or a photorealistic copy. Building heights without OSM height/levels tags are estimates. Major landmarks and facades require a separate manual art pass.
 
-## Configure the taxi pawn
+## Tests and acceptance
 
-Open Sawari/Sawari.uproject with Unreal Engine 5.8 and generate IDE project files if prompted. Build the SawariEditor target in Visual Studio.
-
-Before the taxi can drive, create a Blueprint child of ASawariTaxiPawn and assign:
-1. A vehicle Skeletal Mesh and matching Physics Asset.
-2. Chaos wheel Blueprint classes with the correct wheel-bone names and front/rear setup.
-3. A torque curve and vehicle movement tuning.
-4. A playable map, Player Start and GameMode default pawn.
-5. A basic HUD / Widget Blueprint that calls the ride subsystem functions.
-
-Keyboard mappings:
-| Action | Key |
-|---|---|
-| Accelerate | W |
-| Brake | Space |
-| Steering | A / D |
-| Reverse gear | Hold S |
-| Handbrake | Left Shift |
-| Camera cycle | V |
-
-The taxi mesh, wheel assets and driving tuning are not fabricated as placeholders; they must be configured as real assets before a playable vehicle test.
-
-## Ride subsystem
-
-Retrieve USawariRideSubsystem from the Game Instance and call:
-1. GenerateDemoRide
-2. AcceptRide
-3. MarkPassengerPickedUp
-4. CompleteRide
-
-The sample request uses the plan's example passenger Ahmed K. (4.8), Saddar pickup and Clifton destination. Economy-class values use the supplied plan's base fare 70 Coins, 15 Coins/km and 2 Coins/minute. The driver receives 85% and the in-game platform retains 15%.
-
-## Tests
-
-From the repository root:
+Run the Python converter test from the repository root:
 
     python -m unittest discover -s tests -v
 
-This validates only the OSM converter. It does not compile Unreal C++ or certify the game as playable.
+This tests OSM conversion only. It does not compile Unreal C++ or certify driving physics. Phase 0 is not complete until the project compiles in UE 5.8, taxi handling is tuned in play, the OSM FBX imports at correct scale/collision, and the entire ride can be completed.
 
 ## OpenStreetMap attribution
 
@@ -99,4 +92,4 @@ Map data and derived map content must carry the appropriate attribution and comp
 
 © OpenStreetMap contributors — https://www.openstreetmap.org/copyright
 
-Keep the OSM source extract, attribution and relevant license notes with distributed map content. These notes are not legal advice.
+Keep OSM source and license notes with any distributed OSM-derived database/content. These notes are not legal advice.
