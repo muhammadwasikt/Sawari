@@ -220,6 +220,31 @@ void ASawariGameMode::UpdateNavigation(float DeltaSeconds)
         ClosestSegment = INDEX_NONE;
     }
 
+    if (bNavigationRouteValid && ClosestSegment == INDEX_NONE && NavigationRoute.Num() >= 2)
+    {
+        for (int32 Index = 0; Index < NavigationRoute.Num() - 1; ++Index)
+        {
+            const FVector A(NavigationRoute[Index].X, NavigationRoute[Index].Y, 0.0);
+            const FVector B(NavigationRoute[Index + 1].X, NavigationRoute[Index + 1].Y, 0.0);
+            const FVector Segment = B - A;
+            const double LengthSquared = Segment.SizeSquared2D();
+            if (LengthSquared <= 1.0) continue;
+
+            const float Alpha = static_cast<float>(FMath::Clamp(
+                FVector::DotProduct(FVector(TaxiLocation.X, TaxiLocation.Y, 0.0) - A, Segment)
+                    / LengthSquared,
+                0.0, 1.0));
+            const FVector Candidate = A + Segment * Alpha;
+            const double DistanceSquared = FVector::DistSquared2D(Candidate, TaxiLocation);
+            if (DistanceSquared < ClosestDistanceSquared)
+            {
+                ClosestDistanceSquared = DistanceSquared;
+                ClosestSegment = Index;
+                ClosestPoint = Candidate;
+            }
+        }
+    }
+
     if (!bNavigationRouteValid || ClosestSegment == INDEX_NONE)
     {
         NavigationDistanceMeters = FVector::Dist2D(TaxiLocation, Target) / 100.0f;
