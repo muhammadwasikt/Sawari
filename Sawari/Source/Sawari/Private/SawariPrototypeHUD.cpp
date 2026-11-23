@@ -1,9 +1,10 @@
 #include "SawariPrototypeHUD.h"
 
-#include "SawariArcadeTaxiPawn.h"
+#include "SawariGameMode.h"
 #include "SawariRideSubsystem.h"
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
+#include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 
 void ASawariPrototypeHUD::DrawHUD()
@@ -20,36 +21,48 @@ void ASawariPrototypeHUD::DrawHUD()
             0.0f, FLinearColor::Black, Shadow, false, false, true, FLinearColor::Black);
     };
 
-    Draw(TEXT("SAWARI  /  KARACHI TAXI SIMULATOR"), 38.0f, 30.0f, 1.25f, FLinearColor(1.0f, 0.78f, 0.25f));
-    Draw(TEXT("W accelerate   S brake / reverse   A/D steer   SPACE handbrake   V camera"), 40.0f, 66.0f, 0.76f, FLinearColor::White);
+    const ASawariGameMode* GameMode = GetWorld()
+        ? Cast<ASawariGameMode>(GetWorld()->GetAuthGameMode())
+        : nullptr;
 
-    const ASawariArcadeTaxiPawn* Taxi = Cast<ASawariArcadeTaxiPawn>(PlayerOwner->GetPawn());
-    if (Taxi)
+    Draw(TEXT("SAWARI  /  KARACHI TAXI SIMULATOR"), 38.0f, 30.0f, 1.25f, FLinearColor(1.0f, 0.78f, 0.25f));
+    Draw(TEXT("W accelerate  S reverse  A/D steer  CTRL brake  SPACE handbrake  V camera"), 40.0f, 66.0f, 0.74f, FLinearColor::White);
+
+    if (GameMode)
     {
-        Draw(FString::Printf(TEXT("SPEED  %03.0f km/h"), Taxi->GetSpeedKmh()), 40.0f, 104.0f, 0.95f, FLinearColor(0.45f, 0.95f, 0.82f));
+        Draw(FString::Printf(TEXT("SPEED  %03.0f km/h"), GameMode->GetTaxiSpeedKmh()),
+            40.0f, 104.0f, 0.95f, FLinearColor(0.45f, 0.95f, 0.82f));
     }
 
-    USawariRideSubsystem* Rides = GetGameInstance() ? GetGameInstance()->GetSubsystem<USawariRideSubsystem>() : nullptr;
+    USawariRideSubsystem* Rides = GetGameInstance()
+        ? GetGameInstance()->GetSubsystem<USawariRideSubsystem>()
+        : nullptr;
     if (!Rides)
     {
         Draw(TEXT("Ride service initializing..."), 40.0f, 145.0f, 0.85f, FLinearColor::White);
         return;
     }
 
-    Draw(FString::Printf(TEXT("WALLET  %d COINS"), Rides->WalletCoins), 40.0f, 145.0f, 0.95f, FLinearColor(0.42f, 0.95f, 0.54f));
-    Draw(TEXT("R request ride    E accept    Q decline"), 40.0f, 181.0f, 0.82f, FLinearColor::White);
+    Draw(FString::Printf(TEXT("WALLET  %d COINS"), Rides->WalletCoins),
+        40.0f, 145.0f, 0.95f, FLinearColor(0.42f, 0.95f, 0.54f));
+    Draw(TEXT("R request ride    E accept    Q decline"),
+        40.0f, 181.0f, 0.82f, FLinearColor::White);
 
-    const FVector Pickup = FVector(-60000.0f, 0.0f, 0.0f);
-    const FVector Dropoff = FVector(440000.0f, 0.0f, 0.0f);
-    if (Taxi && (Rides->RideState == ESawariRideState::Requested || Rides->RideState == ESawariRideState::Accepted))
+    const APawn* Taxi = PlayerOwner->GetPawn();
+    if (Taxi && GameMode)
     {
-        const float DistanceMeters = FVector::Dist2D(Taxi->GetActorLocation(), Pickup) / 100.0f;
-        Draw(FString::Printf(TEXT("PICKUP DISTANCE  %.0f m"), DistanceMeters), 40.0f, 216.0f, 0.82f, FLinearColor(1.0f, 0.78f, 0.25f));
-    }
-    else if (Taxi && Rides->RideState == ESawariRideState::PassengerOnboard)
-    {
-        const float DistanceMeters = FVector::Dist2D(Taxi->GetActorLocation(), Dropoff) / 100.0f;
-        Draw(FString::Printf(TEXT("DESTINATION DISTANCE  %.0f m"), DistanceMeters), 40.0f, 216.0f, 0.82f, FLinearColor(0.25f, 0.95f, 0.62f));
+        if (Rides->RideState == ESawariRideState::Requested || Rides->RideState == ESawariRideState::Accepted)
+        {
+            const float DistanceMeters = FVector::Dist2D(Taxi->GetActorLocation(), GameMode->GetPickupCheckpoint()) / 100.0f;
+            Draw(FString::Printf(TEXT("PICKUP DISTANCE  %.0f m"), DistanceMeters),
+                40.0f, 216.0f, 0.82f, FLinearColor(1.0f, 0.78f, 0.25f));
+        }
+        else if (Rides->RideState == ESawariRideState::PassengerOnboard)
+        {
+            const float DistanceMeters = FVector::Dist2D(Taxi->GetActorLocation(), GameMode->GetDropoffCheckpoint()) / 100.0f;
+            Draw(FString::Printf(TEXT("DESTINATION DISTANCE  %.0f m"), DistanceMeters),
+                40.0f, 216.0f, 0.82f, FLinearColor(0.25f, 0.95f, 0.62f));
+        }
     }
 
     switch (Rides->RideState)

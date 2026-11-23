@@ -1,45 +1,61 @@
-# Sawari — Phase 0 acceptance checklist
+# Sawari — Phase 0 / Real Karachi Corridor Acceptance
 
-Phase 0 proves the risky foundation before the scope expands: a Karachi OSM-to-Unreal pipeline, a controllable taxi, a ride HUD, a visible passenger and a complete single-player ride loop.
+This milestone advances the project from a generic city blockout toward a real Saddar–Clifton corridor, a production Chaos taxi path and road-based moving traffic.
 
-## Implemented in source (not yet UE-compiled)
+## Added source in this iteration
 
-- Unreal Engine 5.8 C++ project and project descriptor.
-- Physics-driven fallback taxi pawn with visible modular car body and wheel components.
-- Acceleration, brake/reverse, steering, handbrake, speed cap and Chase / Bonnet / Cockpit camera switching.
-- Procedural 3D boulevard/city blockout with road collision, sidewalks, buildings, road markings, sun, sky atmosphere and haze.
-- Visible low-poly passenger character at the pickup.
-- Native HUD for speed, wallet, state, fare and checkpoint distance.
-- Ride request, accept, pickup, drop-off, fare calculation and 85/15 driver/platform split.
-- Python editor script to create and save the playable prototype map.
-- Saddar OSM fetcher and Blender LoD1 blockout exporter remain available for the real-map pipeline.
+- Runtime OSM GeoJSON reader for roads, buildings and manifest metadata.
+- Geographic-to-Unreal projection using a corridor origin from the OSM manifest.
+- Procedural road ribbons and building massing with collision.
+- Pickup, drop-off and taxi spawn snapping toward the nearest extracted road segment.
+- Road polylines exported to an in-memory traffic route list; one-way-tagged roads are excluded from the initial two-way traffic follower.
+- Capped moving AI traffic actors following those road polylines with lane offsets, swept movement and blockage slowdown.
+- Chaos four-wheel taxi base with wheel classes, front/rear suspension and engine torque configuration.
+- Blender taxi FBX generator with chassis and four named wheel bones.
+- Unreal Python helper to import the taxi Skeletal Mesh and request Physics Asset generation.
+- GameMode selection logic: real OSM corridor when staged, real Chaos taxi when the rigged mesh and Physics Asset are imported; otherwise the prior prototype fallback remains available.
+- HUD speed/checkpoint distance read from the active GameMode and active map coordinates.
 
-## Still required
+## Local build pipeline
 
-- Compile the Unreal 5.8 Editor target and resolve any engine-version/compiler issues.
-- Tune the fallback taxi physics in Play-in-Editor; the fallback is arcade physics, not a four-wheel Chaos suspension simulation.
-- Configure the production Chaos vehicle with a real taxi Skeletal Mesh, Physics Asset, four wheel setups and torque curve.
-- Import and validate the actual Saddar OSM export; replace the temporary city blockout with OSM-derived geometry and hand-built major landmarks.
-- Add a road graph, turn-by-turn offline navigation and route recalculation.
-- Add moving traffic, pedestrians, passenger animation, day/night/weather, fuel and vehicle damage.
-- Package and test Windows first; assess mobile performance separately.
+1. Run python Scripts/fetch_saddar_osm.py to download the Saddar–Clifton OpenStreetMap corridor and stage GeoJSON/manifest files under Sawari/Content/SawariData/Saddar.
+2. Run Blender/create_sawari_taxi.py to export Exports/SK_SawariTaxi.fbx.
+3. In Unreal 5.8, compile the Editor target and run Scripts/import_sawari_taxi.py through the Unreal Python console.
+4. Verify the imported Physics Asset; create or repair it if necessary.
+5. Create /Game/Vehicles/Taxi/ABP_SawariTaxi based on VehicleAnimationInstance, add four Wheel Controller nodes for the imported wheel bones, and save.
+6. Run Scripts/create_sawari_level.py once to create /Game/Maps/L_SawariPrototype.
+7. Play the level with OSM data and taxi assets staged.
 
-## Controls and ride test
+## Controls
 
-1. W accelerates; S brakes while moving forward and reverses when nearly stopped.
-2. A/D steer; Space applies handbrake; V cycles the three camera views.
-3. E accepts the sample ride; Q declines; R creates the next request after a ride is complete or declined.
-4. Drive near the yellow Saddar pickup marker; the passenger boards automatically.
-5. Drive to the green Clifton marker; the passenger is dropped off automatically.
+- W: throttle
+- S: reverse, or brake while moving forward
+- Left Ctrl: service brake
+- Space: handbrake
+- A/D: steering
+- V: chase / bonnet / cockpit camera
+- E: accept ride, Q: decline, R: next ride
 
-## Phase 0 gate tests
+## Remaining work / honest limitations
 
-1. Project compiles in Unreal 5.8 with the declared plugins enabled.
-2. Play-in-Editor opens L_SawariPrototype and automatically spawns the city, taxi, HUD and passenger.
-3. Taxi can accelerate, brake, reverse, steer, handbrake and switch all three camera views without falling through the road.
-4. A request can be accepted, pickup triggered by proximity, drop-off triggered by proximity, and wallet updated.
-5. For the sample no-surge fare (181 Coins), driver payout is 153 Coins and platform fee is 28 Coins.
-6. Saddar OSM extract produces non-empty roads and building layers; Blender export opens in Unreal with correct scale, orientation and collision.
-7. Packaged single-player prototype can complete a ride with internet disconnected after city data is imported.
+- This environment has not compiled the UE 5.8 C++ code or launched Unreal Editor.
+- The OSM data has not yet been fetched into the repository; the script is present and must be run locally.
+- The generated taxi FBX and Physics Asset have not been imported or physics-tuned in Editor.
+- VehicleAnimationInstance / Wheel Controller Animation Blueprint is an Unreal Editor setup step and has not been generated by code.
+- Current road traffic follows individual two-way OSM road polylines with left-hand lane offsets; NPCs restart at route ends. Intersection logic, traffic-light control, lane changes, overtaking, connected road graph routing and Pakistani vehicle diversity remain to be built.
+- Current navigation HUD shows straight-line checkpoint distance; no turn-by-turn offline routing yet.
+- OSM buildings use height tags where available and estimated heights where they are absent; major Karachi landmarks still need manual modelling and visual polish.
+- Windows packaged build and offline runtime QA remain outstanding.
 
-Do not declare Phase 0 passed merely because the project files exist. All gates must be tested in Unreal and a packaged build.
+## Runtime acceptance gates
+
+1. UE 5.8 Editor target compiles with Chaos Vehicles and Procedural Mesh Component enabled.
+2. OSM manifest, road GeoJSON and building GeoJSON parse in game; both road and building procedural mesh sections are non-empty.
+3. Taxi spawn, pickup and drop-off points are placed on/near extracted drivable roads.
+4. A Chaos Skeletal Mesh with Physics Asset and four wheel setups is accepted by GameMode; wheel animation blueprint uses all four imported bone names.
+5. Taxi driving controls and the three camera modes work in Play-in-Editor.
+6. OSM traffic routes spawn moving NPC vehicles; collision sweeps do not trap cars permanently or block the player spawn.
+7. The player accepts a request, reaches the passenger, triggers pickup, reaches the destination and triggers drop-off; 85% driver payout and 15% platform fee are correct.
+8. OSM files are packaged as UFS data and the single-player corridor remains available without internet.
+
+Do not mark this milestone passed on source presence alone. All runtime gates must be verified in Unreal 5.8.

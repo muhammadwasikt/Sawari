@@ -1,4 +1,5 @@
 using UnrealBuildTool;
+
 public class Sawari : ModuleRules
 {
     public Sawari(ReadOnlyTargetRules Target) : base(Target)
@@ -6,7 +7,14 @@ public class Sawari : ModuleRules
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         PublicDependencyModuleNames.AddRange(new string[]
         {
-            "Core", "CoreUObject", "Engine", "InputCore", "ChaosVehicles"
+            "Core",
+            "CoreUObject",
+            "Engine",
+            "InputCore",
+            "ChaosVehicles",
+            "ProceduralMeshComponent",
+            "Json",
+            "JsonUtilities"
         });
     }
 }

@@ -3,11 +3,14 @@
 #include "GameFramework/GameModeBase.h"
 #include "SawariGameMode.generated.h"
 
+class APawn;
 class ASawariArcadeTaxiPawn;
 class ASawariPassengerNPC;
 class ASawariPrototypeCity;
+class ASawariSaddarOSMActor;
+class ASawariTrafficManager;
 
-/** Boots the self-contained playable Phase 0 world without a hand-built level. */
+/** Starts real OSM Karachi when staged data exists; retains a blockout fallback. */
 UCLASS()
 class SAWARI_API ASawariGameMode : public AGameModeBase
 {
@@ -17,17 +20,34 @@ public:
     virtual void StartPlay() override;
     virtual void Tick(float DeltaSeconds) override;
 
+    UFUNCTION(BlueprintPure, Category = "Sawari|Ride")
+    FVector GetPickupCheckpoint() const { return PickupPoint; }
+
+    UFUNCTION(BlueprintPure, Category = "Sawari|Ride")
+    FVector GetDropoffCheckpoint() const { return DropoffPoint; }
+
+    UFUNCTION(BlueprintPure, Category = "Sawari|Driving")
+    float GetTaxiSpeedKmh() const;
+
 private:
     UPROPERTY()
-    TObjectPtr<ASawariArcadeTaxiPawn> Taxi;
+    TObjectPtr<APawn> Taxi;
+
     UPROPERTY()
-    TObjectPtr<ASawariPrototypeCity> City;
+    TObjectPtr<ASawariPrototypeCity> FallbackCity;
+
+    UPROPERTY()
+    TObjectPtr<ASawariSaddarOSMActor> RealCity;
+
+    UPROPERTY()
+    TObjectPtr<ASawariTrafficManager> TrafficManager;
+
     UPROPERTY()
     TObjectPtr<ASawariPassengerNPC> Passenger;
 
-    const FVector TaxiStart = FVector(-180000.0f, 0.0f, 170.0f);
-    const FVector PickupPoint = FVector(-60000.0f, 1450.0f, 0.0f);
-    const FVector DropoffPoint = FVector(440000.0f, 0.0f, 0.0f);
+    FVector TaxiStart = FVector(-180000.0f, 0.0f, 170.0f);
+    FVector PickupPoint = FVector(-60000.0f, 1450.0f, 0.0f);
+    FVector DropoffPoint = FVector(440000.0f, 0.0f, 0.0f);
 
     void SpawnPrototypeWorld();
     void TrySpawnTaxi();
