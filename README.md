@@ -21,7 +21,7 @@ The game selects the most complete local setup available:
 - Runtime OSM actor that reads the staged manifest and GeoJSON, projects geographic coordinates into Unreal units, generates road and building meshes, creates road collision, and snaps taxi / ride checkpoints toward nearby road segments.
 - Basic AI traffic vehicles that travel along extracted primary, secondary, tertiary and residential road polylines, with lane offsets, collision sweeps and slowdown when blocked.
 - A fallback procedural city and arcade taxi so development can continue before the real data and vehicle assets are ready.
-- HUD speed and checkpoint-distance values are now read from the active GameMode, so they follow the real city coordinates instead of hard-coded blockout coordinates.
+- HUD speed and navigation values are read from the active GameMode. When OSM is loaded, a direction-aware road graph runs Dijkstra shortest-path routing and provides remaining road distance plus the next meaningful left/right bend. If a connected route cannot be found or OSM is absent, the HUD clearly falls back to direct distance and the visible beacon.
 
 ## Requirements
 
@@ -106,9 +106,15 @@ Open:
 
     Sawari/Sawari.uproject
 
-Build the SawariEditor target in Visual Studio 2022. In Unreal Editor, run the level creation helper once from the Python console:
+Build the SawariEditor target in Visual Studio 2022. Run the level creation helper **inside Unreal Editor** after the C++ module has compiled.
 
-    py "C:/FULL/PATH/TO/Sawari/Scripts/create_sawari_level.py"
+Use either:
+1. Unreal Editor menu **Tools → Execute Python Script**, then select `Scripts/create_sawari_level.py`; or
+2. Open **Window → Developer Tools → Output Log**, use the Python console input and run:
+
+       py "C:/Users/YOUR_WINDOWS_USER/Documents/GitHub/Sawari/Scripts/create_sawari_level.py"
+
+Replace the example path with the actual folder where you extracted/cloned Sawari. Do not type the placeholder path literally. The script imports Unreal's `unreal` module and cannot run in a generic browser Python runner, VS Code's normal Python terminal, or standalone system Python. The `py "..." ` syntax is an Unreal Editor console command, not Python source code.
 
 The script creates and saves /Game/Maps/L_SawariPrototype and assigns SawariGameMode. Restart the editor once after the map has been created, open L_SawariPrototype and press Play.
 
@@ -138,13 +144,13 @@ Ride loop:
 4. Drive to the green Clifton drop-off beacon.
 5. Drop-off triggers automatically and the Economy fare is distributed 85% to the driver and 15% to the platform.
 
-The HUD shows active vehicle speed, wallet balance, ride state and distance to the current checkpoint. The current navigation indicator is straight-line distance; turn-by-turn route planning and route recalculation are not yet implemented.
+The HUD shows active vehicle speed, wallet balance, ride state and navigation. When the OSM road graph is available, it displays the shortest connected road-route distance and the next meaningful turn. The graph respects OSM one-way direction tags, including `oneway=-1`; if the OSM graph is unavailable or disconnected, the HUD labels the fallback as direct distance rather than presenting it as a road route. The route is recalculated when the ride target changes and when the taxi moves substantially away from its current route.
 
 ## AI traffic — current scope
 
 When real OSM data is loaded, the traffic manager selects extracted drivable road polylines and spawns a capped set of moving NPC cars. Cars follow extracted two-way road polylines with left-hand lane offsets, sweep against collisions and slow down when blocked. One-way-tagged roads are excluded from this first bidirectional traffic follower so NPCs are not sent against one-way direction. At the end of an individual OSM way, the NPC restarts at that way's beginning; connected junction routing is still future work.
 
-This is the first traffic simulation layer—not a finished Karachi traffic model. Junction priority, lane-changing, overtaking, traffic lights, bus/rickshaw behaviour and a fully connected road-graph routing system remain future tasks.
+This is the first traffic simulation layer—not a finished Karachi traffic model. The new connected road graph is used for player navigation; NPC traffic still follows individual road polylines. Junction priority, traffic-light control, lane-changing, overtaking, bus/rickshaw behaviour and graph-based NPC junction decisions remain future tasks.
 
 ## Offline packaging and OSM attribution
 
@@ -167,7 +173,7 @@ Then in Unreal 5.8 verify:
 4. The Chaos taxi reports a valid Skeletal Mesh, Physics Asset and four wheel setups; all four Wheel Controller nodes animate their wheel bones.
 5. The taxi accelerates, brakes, reverses, steers, handbrakes and changes all three cameras.
 6. NPC traffic spawns only on valid OSM route polylines and moves without becoming stuck permanently or blocking the player spawn.
-7. A complete pickup-to-drop-off ride succeeds and the driver/platform wallet split is correct.
+7. A complete pickup-to-drop-off ride succeeds, navigation follows connected OSM ways in the legal one-way direction, off-route movement triggers route recalculation, and the driver/platform wallet split is correct.
 8. A packaged build can run the single-player corridor without an internet connection after OSM data has been staged.
 
 Do not mark the milestone complete until these runtime gates have been tested in Unreal. This repository currently contains source and build tooling, not a compiled or QA-certified game build.
