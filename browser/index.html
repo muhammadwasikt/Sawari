@@ -79,7 +79,7 @@ const vehicleSpecs={
 };
 let selectedCar=career.carModel||'mehran';
 function buildTaxiModel(model=selectedCar){
-selectedCar=vehicleSpecs[model]?model:'mehran';career.carModel=selectedCar;taxi.clear();wheels.length=0;
+selectedCar=vehicleSpecs[model]?model:'mehran';career.carModel=selectedCar;taxi.clear();wheels.length=0;frontWheels.length=0;
 const v=vehicleSpecs[selectedCar],L=v.length,W=v.width,front=-L/2,rear=L/2,cabW=W*.86,cabY=1.39,cabL=v.cabinLength,cabZ=v.cabinZ;
 box(taxi,W,.48,L,yellow,0,.7,0);
 box(taxi,W*.98,.25,v.hood,yellow,0,.99,front+v.hood/2+.08);
