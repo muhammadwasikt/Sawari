@@ -1,11 +1,5 @@
 name: Deploy Sawari Browser Game
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'browser/**'
-      - 'index.html'
-      - '.github/workflows/deploy-browser.yml'
   workflow_dispatch:
 permissions:
   contents: read

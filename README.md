@@ -1,3 +1,9 @@
+## Browser version — no Unreal Engine required
+
+A standalone 3D browser build is being developed in `browser/`. It uses Three.js and live OpenStreetMap roads/building footprints for a Saddar–Clifton taxi-driving prototype. Open [browser/README.md](browser/README.md) for local run instructions, deployment steps and the current feature/limitation list. This is an early playable vertical slice, not the completed simulator; browser and mobile gameplay testing is still pending.
+
+---
+
 # SAWARI — Real City Taxi Simulator
 
 **Phase 0 / next-step engineering build · Unreal Engine 5.8 · Karachi, Pakistan**
