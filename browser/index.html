@@ -186,7 +186,16 @@ if(blocked){v=-v*.12;toast('Building / city boundary — slow down');}
 else{player.x=nx;player.z=nz;}
 player.speed=v;positionCar();for(const w of wheels)w.rotation.x-=v*dt/.38;
 }
-function updateCamera(dt){const back=new THREE.Vector3(-Math.sin(player.yaw)*15,8.5,Math.cos(player.yaw)*15);const desired=new THREE.Vector3(player.x+back.x,player.y+back.y,player.z+back.z);camera.position.lerp(desired,1-Math.pow(.001,dt));camera.lookAt(player.x,1.1,player.z);}
+function updateCamera(dt){
+const backX=-Math.sin(player.yaw)*15,backZ=Math.cos(player.yaw)*15;
+const desiredX=player.x+backX,desiredY=8.5,desiredZ=player.z+backZ;
+if(!Number.isFinite(desiredX)||!Number.isFinite(desiredY)||!Number.isFinite(desiredZ)){
+camera.position.set(player.x-15,10,player.z+18);
+}else{
+camera.position.lerp(new THREE.Vector3(desiredX,desiredY,desiredZ),1-Math.pow(.001,dt));
+}
+camera.lookAt(player.x,1.1,player.z);
+}
 function updateWorld(dt){for(const t of traffic){if(t.path.length<2)continue;let a=t.path[t.index],b=t.path[(t.index+1)%t.path.length];const d=Math.hypot(b.x-a.x,b.z-a.z);t.t+=t.speed*dt/Math.max(1,d);while(t.t>=1){t.t-=1;t.index=(t.index+1)%t.path.length;a=t.path[t.index];b=t.path[(t.index+1)%t.path.length];}t.g.position.set(THREE.MathUtils.lerp(a.x,b.x,t.t),0,THREE.MathUtils.lerp(a.z,b.z,t.t));t.g.rotation.y=Math.atan2(b.x-a.x,-(b.z-a.z));}}
 function updateHUD(){ $('speed').textContent=Math.round(Math.abs(player.speed)*3.6);$('gear').textContent=player.speed<-.2?'R':player.speed>.2?'D':'PARK';areaLabel();if(job){const target=job.stage==='pickup'?job.pickup:job.drop;const d=Math.hypot(target.x-player.x,target.z-player.z);$('routeDetail').textContent='Marker distance · '+Math.round(d)+' m';}maybeInteract();}
 function animate(now){requestAnimationFrame(animate);const dt=Math.min(.04,(now-lastFrame)/1000);lastFrame=now;updateDriving(dt);updateWorld(dt);updateCamera(dt);updateHUD();updateEngineAudio();renderer.render(scene,camera);}
