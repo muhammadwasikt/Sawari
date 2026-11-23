@@ -71,7 +71,7 @@ const grilleMat=new THREE.MeshStandardMaterial({color:0x171e22,metalness:.35,rou
 const headlampMat=new THREE.MeshStandardMaterial({color:0xf5f0d8,emissive:0x786a42,roughness:.2});
 const tailMat=new THREE.MeshStandardMaterial({color:0xb52720,emissive:0x310400,roughness:.25});
 const wheelHubMat=new THREE.MeshStandardMaterial({color:0x9ca5a7,metalness:.82,roughness:.24});
-const wheels=[];
+const wheels=[],frontWheels=[];
 const vehicleSpecs={
  mehran:{name:'Suzuki Mehran-style',length:3.55,width:1.52,cabinLength:2.02,cabinZ:.25,cabinHeight:.78,roofLength:1.5,roofZ:.28,hood:.72,boot:.42},
  alto:{name:'Suzuki Alto-style',length:3.53,width:1.62,cabinLength:2.13,cabinZ:.22,cabinHeight:.94,roofLength:1.55,roofZ:.25,hood:.72,boot:.38},
@@ -79,7 +79,7 @@ const vehicleSpecs={
 };
 let selectedCar=career.carModel||'mehran';
 function buildTaxiModel(model=selectedCar){
-selectedCar=vehicleSpecs[model]?model:'mehran';career.carModel=selectedCar;taxi.clear();wheels.length=0;
+selectedCar=vehicleSpecs[model]?model:'mehran';career.carModel=selectedCar;taxi.clear();wheels.length=0;frontWheels.length=0;
 const v=vehicleSpecs[selectedCar],L=v.length,W=v.width,front=-L/2,rear=L/2,cabW=W*.86,cabY=1.39,cabL=v.cabinLength,cabZ=v.cabinZ;
 box(taxi,W,.48,L,yellow,0,.7,0);
 box(taxi,W*.98,.25,v.hood,yellow,0,.99,front+v.hood/2+.08);
@@ -113,7 +113,7 @@ for(const x of [-W/2-.02,W/2+.02]){
 const wheel=new THREE.Group();wheel.position.set(x,.39,z);taxi.add(wheel);
 const tyre=new THREE.Mesh(new THREE.CylinderGeometry(.34,.34,.22,20),rubber);tyre.rotation.z=Math.PI/2;tyre.castShadow=true;wheel.add(tyre);
 const hub=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.235,16),wheelHubMat);hub.rotation.z=Math.PI/2;wheel.add(hub);
-wheels.push(wheel);
+wheels.push(wheel);if(z<0)frontWheels.push(wheel);
 }
 }
 for(const x of [-W*.28,W*.28])box(taxi,.13,.13,.18,chrome,x,.98,rear+.08);
@@ -175,77 +175,83 @@ function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i)
 function addBuildings(ways){
 const valid=[];
 for(const w of ways){
+try{
 let pts=(w.geometry||[]).map(p=>toWorld(p.lat,p.lon));
 if(pts.length>3&&Math.hypot(pts[0].x-pts[pts.length-1].x,pts[0].z-pts[pts.length-1].z)<.5)pts=pts.slice(0,-1);
 if(pts.length<3)continue;
 let minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity,area2=0;
 for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length];minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minZ=Math.min(minZ,p.z);maxZ=Math.max(maxZ,p.z);area2+=p.x*q.z-q.x*p.z;}
 const area=Math.abs(area2/2),boxArea=(maxX-minX)*(maxZ-minZ);
-if(area<14||area>7500||boxArea<18||boxArea>9000)continue;
-let levels=Number(String(w.tags?.['building:levels']||'').replace(/[^0-9.]/g,''))||0;
-let height=parseFloat(String(w.tags?.height||'').replace(/[^0-9.]/g,''))||0;
-if(!height)height=levels?levels*3.15: (2+(hash(String(w.id))%5))*3.05;
-height=THREE.MathUtils.clamp(height,3.2,54);
-valid.push({w,pts,minX,maxX,minZ,maxZ,height,area,area2});
+if(area<8||area>22000||boxArea<10||boxArea>30000)continue;
+const tags=w.tags||{};
+const levels=Number(String(tags['building:levels']||'').replace(/[^0-9.]/g,''))||0;
+let height=parseFloat(String(tags.height||'').replace(/[^0-9.]/g,''))||0;
+if(!height)height=levels?levels*3.15:(2+hash(String(w.id))%5)*3.05;
+height=THREE.MathUtils.clamp(height,3.2,66);
+valid.push({w,pts,minX,maxX,minZ,maxZ,height,area2});
+}catch(err){console.warn('Skipped malformed OSM footprint',w?.id,err);}
 }
 valid.sort((a,b)=>Math.hypot(a.minX+a.maxX,a.minZ+a.maxZ)-Math.hypot(b.minX+b.maxX,b.minZ+b.maxZ));
-const wallBatches=buildingMaterials.map(()=>({p:[],idx:[]}));
-const roofBatches=buildingMaterials.map(()=>({p:[],idx:[]}));
+const batches=buildingMaterials.map(()=>({p:[],n:[],idx:[]}));
 const windowMatrices=[],tankMatrices=[];
-const windowGeometry=new THREE.BoxGeometry(.92,1.05,.075);
-const windowMaterial=new THREE.MeshStandardMaterial({color:0x244958,metalness:.22,roughness:.22,emissive:0x08151c});
+const windowGeometry=new THREE.BoxGeometry(.82,.98,.09);
+const windowMaterial=new THREE.MeshStandardMaterial({color:0x244958,metalness:.18,roughness:.2,emissive:0x0a1720,side:THREE.DoubleSide});
 const tankGeometry=new THREE.CylinderGeometry(.48,.52,1.05,10);
 const tankMaterial=new THREE.MeshStandardMaterial({color:0x9aa3a4,roughness:.82});
-for(const item of valid.slice(0,1500)){
+for(const item of valid.slice(0,1900)){
 try{
 const {w,pts,minX,maxX,minZ,maxZ,height,area2}=item;
-const style=hash(String(w.id))%buildingMaterials.length,wall=wallBatches[style],roof=roofBatches[style];
+const style=hash(String(w.id))%buildingMaterials.length,batch=batches[style];
 const shape=new THREE.Shape();shape.moveTo(pts[0].x,-pts[0].z);
 for(let i=1;i<pts.length;i++)shape.lineTo(pts[i].x,-pts[i].z);
 shape.closePath();
-const roofGeo=new THREE.ShapeGeometry(shape,1);roofGeo.rotateX(-Math.PI/2);roofGeo.translate(0,height+.06,0);roofGeo.computeVertexNormals();
-const rp=roofGeo.getAttribute('position'),ri=roofGeo.getIndex(),rb=roof.p.length/3;
-for(let i=0;i<rp.count;i++)roof.p.push(rp.getX(i),rp.getY(i),rp.getZ(i));
-if(ri){for(let i=0;i<ri.count;i++)roof.idx.push(rb+ri.getX(i));}else{for(let i=0;i<rp.count;i++)roof.idx.push(rb+i);}
-roofGeo.dispose();
-// Actual OSM footprint walls with separate vertical faces.
-for(let i=0;i<pts.length;i++){
-const a=pts[i],b=pts[(i+1)%pts.length],dx=b.x-a.x,dz=b.z-a.z,len=Math.hypot(dx,dz);if(len<1.2)continue;
-const base=wall.p.length/3;
-wall.p.push(a.x,.05,a.z,b.x,.05,b.z,b.x,height,b.z,a.x,height,a.z);
-wall.idx.push(base,base+1,base+2,base,base+2,base+3);
-// Facade windows follow each footprint edge. The instanced boxes are glass panes, not a flat image texture.
-if(height>=6&&len>=4.4){
-const slots=Math.min(7,Math.max(1,Math.floor(len/3.1))),floors=Math.min(14,Math.max(1,Math.floor((height-1.8)/3.0)));
-const ux=dx/len,uz=dz/len,nx=(area2>0?uz:-uz),nz=(area2>0?-ux:ux);
-const rot=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-Math.atan2(dz,dx));
+const geo=new THREE.ExtrudeGeometry(shape,{depth:height,bevelEnabled:false,curveSegments:1,steps:1});
+geo.rotateX(-Math.PI/2);geo.translate(0,.06,0);
+const pos=geo.getAttribute('position'),normal=geo.getAttribute('normal'),index=geo.getIndex(),base=batch.p.length/3;
+for(let i=0;i<pos.count;i++){batch.p.push(pos.getX(i),pos.getY(i),pos.getZ(i));batch.n.push(normal.getX(i),normal.getY(i),normal.getZ(i));}
+if(index){for(let i=0;i<index.count;i++)batch.idx.push(base+index.getX(i));}else{for(let i=0;i<pos.count;i++)batch.idx.push(base+i);}
+geo.dispose();
+for(let edge=0;edge<pts.length;edge++){
+const a=pts[edge],b=pts[(edge+1)%pts.length],dx=b.x-a.x,dz=b.z-a.z,len=Math.hypot(dx,dz);
+if(len<5||height<6)continue;
+const ux=dx/len,uz=dz/len,nx=area2>0?uz:-uz,nz=area2>0?-ux:ux;
+const rotation=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),-Math.atan2(dz,dx));
+const slots=Math.min(7,Math.max(1,Math.floor(len/3.1))),floors=Math.min(12,Math.max(1,Math.floor((height-1.8)/3)));
 for(let floor=0;floor<floors;floor++){
-const y=1.45+floor*3.0;if(y+1.05>height-.45)continue;
-for(let slot=0;slot<slots;slot++){
-const along=(slot+.5)*len/slots,px=a.x+ux*along+nx*.045,pz=a.z+uz*along+nz*.045;
-const pos=new THREE.Vector3(px,y,pz),scale=new THREE.Vector3(Math.min(.92,len/slots*.58),.92,1);
-const matrix=new THREE.Matrix4().compose(pos,rot,scale);if(windowMatrices.length<16000)windowMatrices.push(matrix);
+const y=1.5+floor*3;if(y+1>height-.4)continue;
+for(let slot=0;slot<slots&&windowMatrices.length<18000;slot++){
+const along=(slot+.5)*len/slots;
+const matrix=new THREE.Matrix4().compose(new THREE.Vector3(a.x+ux*along+nx*.07,y,a.z+uz*along+nz*.07),rotation,new THREE.Vector3(Math.min(.82,len/slots*.55),.88,1));
+windowMatrices.push(matrix);
 }
 }
 }
-}
-// Rooftop water tanks are common rooftop fixtures; vary their placement but keep them sparse.
 if(hash('tank'+String(w.id))%4===0){
-const cx=(minX+maxX)/2,cz=(minZ+maxZ)/2;
-const q=new THREE.Quaternion(),m=new THREE.Matrix4().compose(new THREE.Vector3(cx,height+.64,cz),q,new THREE.Vector3(1,1,1));tankMatrices.push(m);
+const matrix=new THREE.Matrix4().compose(new THREE.Vector3((minX+maxX)/2,height+.62,(minZ+maxZ)/2),new THREE.Quaternion(),new THREE.Vector3(1,1,1));
+tankMatrices.push(matrix);
 }
 buildings.push({minX,maxX,minZ,maxZ,polygon:pts});
-}catch(err){console.warn('Skipped malformed OSM building footprint',item.w?.id,err);}
+}catch(err){console.warn('Could not extrude OSM building',item.w?.id,err);}
 }
-for(let i=0;i<wallBatches.length;i++){
-const w=wallBatches[i],r=roofBatches[i];
-if(w.p.length){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(w.p,3));g.setIndex(w.idx);g.computeVertexNormals();const mesh=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:buildingMaterials[i].color,roughness:.88,side:THREE.DoubleSide}));mesh.receiveShadow=true;mesh.castShadow=false;scene.add(mesh);}
-if(r.p.length){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(r.p,3));g.setIndex(r.idx);g.computeVertexNormals();const mesh=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:buildingMaterials[i].color,roughness:.93,side:THREE.DoubleSide}));scene.add(mesh);}
+for(let i=0;i<batches.length;i++){
+const b=batches[i];if(!b.p.length)continue;
+const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(b.p,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(b.n,3));g.setIndex(b.idx);g.computeBoundingSphere();
+const mat=new THREE.MeshStandardMaterial({color:buildingMaterials[i].color,roughness:.88,metalness:.02,side:THREE.DoubleSide});
+const mesh=new THREE.Mesh(g,mat);mesh.castShadow=false;mesh.receiveShadow=true;scene.add(mesh);
 }
-if(windowMatrices.length){const windows=new THREE.InstancedMesh(windowGeometry,windowMaterial,windowMatrices.length);for(let i=0;i<windowMatrices.length;i++)windows.setMatrixAt(i,windowMatrices[i]);windows.instanceMatrix.needsUpdate=true;scene.add(windows);}
-if(tankMatrices.length){const tanks=new THREE.InstancedMesh(tankGeometry,tankMaterial,tankMatrices.length);for(let i=0;i<tankMatrices.length;i++)tanks.setMatrixAt(i,tankMatrices[i]);tanks.instanceMatrix.needsUpdate=true;scene.add(tanks);}
-$('mapCounts').textContent=buildings.length.toLocaleString()+' buildings';
-if(!buildings.length)throw new Error('OpenStreetMap returned no usable building footprints in this area; map is incomplete.');
+if(windowMatrices.length){
+const windows=new THREE.InstancedMesh(windowGeometry,windowMaterial,windowMatrices.length);
+for(let i=0;i<windowMatrices.length;i++)windows.setMatrixAt(i,windowMatrices[i]);
+windows.instanceMatrix.needsUpdate=true;windows.frustumCulled=false;scene.add(windows);
+}
+if(tankMatrices.length){
+const tanks=new THREE.InstancedMesh(tankGeometry,tankMaterial,tankMatrices.length);
+for(let i=0;i<tankMatrices.length;i++)tanks.setMatrixAt(i,tankMatrices[i]);
+tanks.instanceMatrix.needsUpdate=true;scene.add(tanks);
+}
+$('mapCounts').textContent=mapWays.length.toLocaleString()+' roads · '+buildings.length.toLocaleString()+' 3D buildings';
+if(buildings.length<20)throw new Error('Only '+buildings.length+' usable building footprints were found. The OSM building data is insufficient for this area.');
+console.info('Sawari city geometry built',{roads:mapWays.length,buildingFootprints:ways.length,solidBuildings:buildings.length,windows:windowMatrices.length});
 }
 function addRoadGraph(ways){
 const seen=new Map();
@@ -344,7 +350,7 @@ const arm=new THREE.Mesh(new THREE.BoxGeometry(.16,.68,.18),shirt);arm.position.
 const label=markerLabelSprite('PASSENGER · PICKUP','#20e3c9');label.position.y=3.1;root.add(label);
 root.position.set(pos.x,0,pos.z);scene.add(root);people.push(root);
 }
-function positionCar(){taxi.position.set(player.x,0,player.z);taxi.rotation.y=player.yaw;}
+function positionCar(){taxi.position.set(player.x,0,player.z);taxi.rotation.y=-player.yaw;}
 function ensureAudio(){if(!soundOn||audioCtx)return;try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();engineOsc=audioCtx.createOscillator();const filter=audioCtx.createBiquadFilter();engineGain=audioCtx.createGain();engineOsc.type='sawtooth';engineOsc.frequency.value=58;filter.type='lowpass';filter.frequency.value=210;engineGain.gain.value=.0001;engineOsc.connect(filter);filter.connect(engineGain);engineGain.connect(audioCtx.destination);engineOsc.start();}catch{audioCtx=null;}}
 function updateEngineAudio(){if(!audioCtx||!engineOsc||!engineGain)return;const active=soundOn&&!paused;const speed=Math.abs(player.speed);engineOsc.frequency.setTargetAtTime(52+speed*3.1,audioCtx.currentTime,.08);engineGain.gain.setTargetAtTime(active?.003+Math.min(speed/30,.012):.0001,audioCtx.currentTime,.12);}
 function toast(msg){$('toast').textContent=msg;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2500);}
@@ -435,16 +441,21 @@ let blocked=taxiCollidesAt(nx,nz,player.yaw);
 if(nx<(BBOX.west-LON0)*METERS_LON||nx>(BBOX.east-LON0)*METERS_LON||nz>-(BBOX.south-LAT0)*METERS_LAT||nz<-(BBOX.north-LAT0)*METERS_LAT)blocked=true;
 if(blocked){v=-v*.12;toast('Building / city boundary — slow down');}
 else{player.x=nx;player.z=nz;}
-player.speed=v;positionCar();for(const w of wheels)w.rotation.x-=v*dt/.38;
+player.speed=v;positionCar();for(const w of wheels)w.rotation.x-=v*dt/.38;for(const w of frontWheels)w.rotation.y=-player.steer*.42;
 }
 function updateCamera(dt){
-const fwdX=Math.sin(player.yaw),fwdZ=-Math.cos(player.yaw);
-const distance=player.cameraMode===0?11:player.cameraMode===2?23:16;
-const height=player.cameraMode===0?5.2:player.cameraMode===2?10:7.2;
-const desired=new THREE.Vector3(player.x-fwdX*distance,height,player.z-fwdZ*distance);
-camera.position.lerp(desired,1-Math.pow(.0008,dt));
-const lookAhead=player.cameraMode===0?2.2:player.cameraMode===2?7:4.5;
-camera.lookAt(player.x+fwdX*lookAhead,1.15,player.z+fwdZ*lookAhead);
+const forward=new THREE.Vector3(0,0,-1).applyQuaternion(taxi.quaternion);
+forward.y=0;
+if(forward.lengthSq()<1e-6)forward.set(0,0,-1);
+forward.normalize();
+const distance=player.cameraMode===0?9:player.cameraMode===2?23:15;
+const height=player.cameraMode===0?4.8:player.cameraMode===2?10:7;
+const lookAhead=player.cameraMode===0?2.5:player.cameraMode===2?8:5;
+const desired=taxi.position.clone().addScaledVector(forward,-distance).add(new THREE.Vector3(0,height,0));
+if(!Number.isFinite(desired.x)||!Number.isFinite(desired.y)||!Number.isFinite(desired.z))camera.position.set(player.x,9,player.z+16);
+else camera.position.lerp(desired,1-Math.pow(.00015,dt));
+const target=taxi.position.clone().addScaledVector(forward,lookAhead).add(new THREE.Vector3(0,1.25,0));
+camera.lookAt(target);
 }
 function updateWorld(dt){for(const t of traffic){if(t.path.length<2)continue;let a=t.path[t.index],b=t.path[(t.index+1)%t.path.length];const d=Math.hypot(b.x-a.x,b.z-a.z);t.t+=t.speed*dt/Math.max(1,d);while(t.t>=1){t.t-=1;t.index=(t.index+1)%t.path.length;a=t.path[t.index];b=t.path[(t.index+1)%t.path.length];}t.g.position.set(THREE.MathUtils.lerp(a.x,b.x,t.t),0,THREE.MathUtils.lerp(a.z,b.z,t.t));t.g.rotation.y=Math.atan2(b.x-a.x,-(b.z-a.z));}}
 function updateHUD(){ $('speed').textContent=Math.round(Math.abs(player.speed)*3.6);$('gear').textContent=player.speed<-.2?'R':player.speed>.2?'D':'PARK';areaLabel();if(job){const target=job.stage==='pickup'?job.pickup:job.drop;const d=Math.hypot(target.x-player.x,target.z-player.z);$('routeDetail').textContent=(job.stage==='pickup'?'To pickup · ':'To drop-off · ')+Math.round(d)+' m';}maybeInteract();}
@@ -478,7 +489,7 @@ function setPedal(which,on){player[which==='throttle'?'pedalThrottle':'pedalBrak
 $('gas').addEventListener('pointerdown',e=>{e.preventDefault();ensureAudio();audioCtx?.resume?.();setPedal('throttle',true);$('gas').setPointerCapture(e.pointerId);});$('gas').addEventListener('pointerup',()=>setPedal('throttle',false));$('gas').addEventListener('pointercancel',()=>setPedal('throttle',false));$('brake').addEventListener('pointerdown',e=>{e.preventDefault();setPedal('brake',true);$('brake').setPointerCapture(e.pointerId);});$('brake').addEventListener('pointerup',()=>setPedal('brake',false));$('brake').addEventListener('pointercancel',()=>setPedal('brake',false));
 const steering=$('steering');function steerFromEvent(e){const r=steering.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;player.steer=THREE.MathUtils.clamp((e.clientX-cx)/(r.width*.38),-1,1);steering.style.transform='rotate('+(player.steer*125)+'deg)';}steering.addEventListener('pointerdown',e=>{steeringPointer=e.pointerId;steering.setPointerCapture(e.pointerId);steerFromEvent(e);});steering.addEventListener('pointermove',e=>{if(e.pointerId===steeringPointer)steerFromEvent(e);});function resetSteer(){steeringPointer=null;player.steer=0;steering.style.transform='';}steering.addEventListener('pointerup',resetSteer);steering.addEventListener('pointercancel',resetSteer);
 $('interactBtn').addEventListener('click',interact);$('pauseBtn').addEventListener('click',()=>{if(paused)closePanel();else openMenu();});$('startDrive').addEventListener('click',closePanel);$('openJobs').addEventListener('click',()=>showPanel(jobsHtml()));$('openGarage').addEventListener('click',()=>showPanel(garageHtml()));$('openSettings').addEventListener('click',()=>showPanel(settingsHtml()));$('resumeBtn').addEventListener('click',closePanel);$('resetBtn').addEventListener('click',()=>{career={wallet:0,today:0,target:2500,engine:0,handling:0,brakes:0,rides:0};save();updateStats();toast('Career reset');});$('langBtn').addEventListener('click',()=>{lang=lang==='en'?'ur':'en';applyLanguage();toast(lang==='en'?'English selected':'اردو منتخب کی گئی');});
-const OSM_CACHE_DB='sawari-map-cache-v1',OSM_CACHE_STORE='extracts',OSM_CACHE_KEY='saddar-clifton-24.815-24.871-67.000-67.070-v1';
+const OSM_CACHE_DB='sawari-map-cache-v1',OSM_CACHE_STORE='extracts',OSM_CACHE_KEY='saddar-clifton-24.815-24.871-67.000-67.070-v2';
 function openMapCache(){
 return new Promise((resolve,reject)=>{
 if(!('indexedDB'in window)){reject(new Error('IndexedDB unavailable'));return;}
@@ -508,7 +519,7 @@ return {...cached.data,fromCache:true,savedAt:cached.savedAt};
 if(cached?.data?.roads?.length)stale=cached;
 }catch(e){console.warn('OSM cache unavailable; downloading fresh data',e);}
 }
-const query='[out:json][timeout:35];(way["highway"~"^(motorway|trunk|primary|secondary|tertiary|residential|unclassified|service|living_street)$"]('+BBOX.south+','+BBOX.west+','+BBOX.north+','+BBOX.east+');way["building"]('+BBOX.south+','+BBOX.west+','+BBOX.north+','+BBOX.east+'););out geom;';
+const query='[out:json][timeout:45];(way["highway"~"^(motorway|trunk|primary|secondary|tertiary|residential|unclassified|service|living_street)$"]('+BBOX.south+','+BBOX.west+','+BBOX.north+','+BBOX.east+');way["building"]('+BBOX.south+','+BBOX.west+','+BBOX.north+','+BBOX.east+');relation["building"]('+BBOX.south+','+BBOX.west+','+BBOX.north+','+BBOX.east+'););out geom;';
 const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.nchc.org.tw/api/interpreter'];let lastError=null;
 for(const url of endpoints){
 try{
@@ -516,8 +527,27 @@ $('loadingText').textContent='Downloading Karachi map once and saving it on this
 const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),45000);
 let response;try{response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8','Accept':'application/json'},body:'data='+encodeURIComponent(query),signal:controller.signal});}finally{clearTimeout(timer);}
 if(!response.ok)throw new Error('Map service returned '+response.status);
-const data=await response.json(),ways=(data.elements||[]).filter(e=>e.type==='way'&&e.geometry);
-const roads=ways.filter(w=>w.tags?.highway),bldgs=ways.filter(w=>w.tags?.building);
+const data=await response.json(),elements=data.elements||[];
+const ways=elements.filter(e=>e.type==='way'&&Array.isArray(e.geometry));
+const roads=ways.filter(w=>w.tags?.highway);
+const bldgs=ways.filter(w=>w.tags?.building).slice();
+function samePoint(a,b){return Math.abs(a.lat-b.lat)<1e-6&&Math.abs(a.lon-b.lon)<1e-6;}
+for(const rel of elements.filter(e=>e.type==='relation'&&e.tags?.building)){
+let segments=(rel.members||[]).filter(m=>m.role==='outer'&&Array.isArray(m.geometry)&&m.geometry.length>=2).map(m=>m.geometry.slice());
+let ringIndex=0;
+while(segments.length){
+let ring=segments.shift(),joined=true,guard=0;
+while(joined&&guard++<100&&!samePoint(ring[0],ring[ring.length-1])){
+joined=false;
+for(let i=0;i<segments.length;i++){
+const seg=segments[i];
+if(samePoint(ring[ring.length-1],seg[0])){ring=ring.concat(seg.slice(1));segments.splice(i,1);joined=true;break;}
+if(samePoint(ring[ring.length-1],seg[seg.length-1])){ring=ring.concat(seg.slice(0,-1).reverse());segments.splice(i,1);joined=true;break;}
+}
+}
+if(ring.length>=4&&samePoint(ring[0],ring[ring.length-1]))bldgs.push({type:'way',id:'relation-'+rel.id+'-'+ringIndex++,tags:rel.tags,geometry:ring});
+}
+}
 if(roads.length<10)throw new Error('The map extract is incomplete');
 const result={roads,bldgs};
 try{await writeMapCache(result);}catch(e){console.warn('Could not save OSM cache; this browser may block IndexedDB',e);}
@@ -527,7 +557,7 @@ return {...result,fromCache:false,savedAt:Date.now()};
 if(stale?.data?.roads?.length)return {...stale.data,fromCache:true,stale:true,savedAt:stale.savedAt};
 throw lastError||new Error('OpenStreetMap data unavailable');
 }
-async function start(){try{const data=await loadOSM();mapWays=data.roads;miniMapPaths=data.roads.map(w=>({type:w.tags?.highway||'residential',points:(w.geometry||[]).map(p=>toWorld(p.lat,p.lon))})); $('loadingText').textContent='Creating the road network and city blocks…';buildRoadMesh(data.roads);addBuildings(data.bldgs);addRoadGraph(data.roads);const spawn=nearestNode({x:player.x,z:player.z});if(spawn){player.x=spawn.x;player.z=spawn.z;const next=(adjacency.get(spawn.key)||[])[0],nextNode=next&&graphNodeByKey.get(next.key);if(nextNode)player.yaw=Math.atan2(nextNode.x-spawn.x,-(nextNode.z-spawn.z));}buildStreetFurniture(data.roads);makeTraffic();mapLoaded=true;$('mapState').textContent=data.fromCache?'CACHED OSM':'LIVE OSM';$('mapCounts').textContent=data.roads.length.toLocaleString()+' roads · '+data.bldgs.length.toLocaleString()+' buildings';$('loading').style.display='none';toast(data.fromCache?'Karachi map loaded from saved browser cache':'Karachi map downloaded and saved for next time');}catch(e){$('loading').innerHTML='<b>Karachi map could not load</b><small>'+String(e?.message||e)+'<br><br>Check internet access and reload the page. The game will not substitute a fake Karachi map.</small><div class="panel-actions"><button class="primary" onclick="location.reload()">Retry map download</button></div>';$('mapState').textContent='Offline';return;}
+async function start(){try{const data=await loadOSM();mapWays=data.roads;miniMapPaths=data.roads.map(w=>({type:w.tags?.highway||'residential',points:(w.geometry||[]).map(p=>toWorld(p.lat,p.lon))})); $('loadingText').textContent='Creating the road network and city blocks…';buildRoadMesh(data.roads);addBuildings(data.bldgs);addRoadGraph(data.roads);const spawn=nearestNode({x:player.x,z:player.z});if(spawn){player.x=spawn.x;player.z=spawn.z;const next=(adjacency.get(spawn.key)||[])[0],nextNode=next&&graphNodeByKey.get(next.key);if(nextNode)player.yaw=Math.atan2(nextNode.x-spawn.x,-(nextNode.z-spawn.z));}buildStreetFurniture(data.roads);makeTraffic();mapLoaded=true;$('mapState').textContent=data.fromCache?'CACHED OSM':'LIVE OSM';$('mapCounts').textContent=data.roads.length.toLocaleString()+' roads · '+buildings.length.toLocaleString()+' 3D buildings';$('loading').style.display='none';toast(data.fromCache?'Karachi map loaded from saved browser cache':'Karachi map downloaded and saved for next time');}catch(e){$('loading').innerHTML='<b>Karachi map could not load</b><small>'+String(e?.message||e)+'<br><br>Check internet access and reload the page. The game will not substitute a fake Karachi map.</small><div class="panel-actions"><button class="primary" onclick="location.reload()">Retry map download</button></div>';$('mapState').textContent='Offline';return;}
 positionCar();updateCamera(1/60);updateStats();applyLanguage();$('modal').classList.remove('hidden');paused=true;gameStarted=false;requestAnimationFrame(animate);}
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));});document.addEventListener('visibilitychange',()=>{if(document.hidden&&!paused)openMenu();});
 $('startDrive').addEventListener('click',()=>{paused=false;gameStarted=true;$('modal').classList.add('hidden');});
