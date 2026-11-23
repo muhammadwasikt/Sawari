@@ -197,6 +197,7 @@ const windowMaterial=new THREE.MeshStandardMaterial({color:0x244958,metalness:.2
 const tankGeometry=new THREE.CylinderGeometry(.48,.52,1.05,10);
 const tankMaterial=new THREE.MeshStandardMaterial({color:0x9aa3a4,roughness:.82});
 for(const item of valid.slice(0,1500)){
+try{
 const {w,pts,minX,maxX,minZ,maxZ,height,area2}=item;
 const style=hash(String(w.id))%buildingMaterials.length,wall=wallBatches[style],roof=roofBatches[style];
 const shape=new THREE.Shape();shape.moveTo(pts[0].x,-pts[0].z);
@@ -234,6 +235,7 @@ const cx=(minX+maxX)/2,cz=(minZ+maxZ)/2;
 const q=new THREE.Quaternion(),m=new THREE.Matrix4().compose(new THREE.Vector3(cx,height+.64,cz),q,new THREE.Vector3(1,1,1));tankMatrices.push(m);
 }
 buildings.push({minX,maxX,minZ,maxZ,polygon:pts});
+}catch(err){console.warn('Skipped malformed OSM building footprint',item.w?.id,err);}
 }
 for(let i=0;i<wallBatches.length;i++){
 const w=wallBatches[i],r=roofBatches[i];
