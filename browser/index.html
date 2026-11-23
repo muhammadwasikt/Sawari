@@ -330,7 +330,18 @@ poleData.forEach((m,i)=>poles.setMatrixAt(i,m));armData.forEach((m,i)=>arms.setM
 scene.add(poles,arms,lamps);
 }
 }
-function addPassenger(pos){function positionCar(){taxi.position.set(player.x,0,player.z);taxi.rotation.y=player.yaw;}
+function addPassenger(pos){
+for(const p of people)scene.remove(p);people=[];
+const root=new THREE.Group();
+const skin=new THREE.MeshStandardMaterial({color:0x9b6749}),shirt=new THREE.MeshStandardMaterial({color:0x2d8b82}),pants=new THREE.MeshStandardMaterial({color:0x29333d});
+const body=new THREE.Mesh(new THREE.CylinderGeometry(.22,.27,.9,10),shirt);body.position.y=1.05;root.add(body);
+const head=new THREE.Mesh(new THREE.SphereGeometry(.2,12,10),skin);head.position.y=1.66;root.add(head);
+const legs=new THREE.Mesh(new THREE.BoxGeometry(.42,.64,.25),pants);legs.position.y=.36;root.add(legs);
+const arm=new THREE.Mesh(new THREE.BoxGeometry(.16,.68,.18),shirt);arm.position.set(.27,1.05,0);root.add(arm);
+const label=markerLabelSprite('PASSENGER · PICKUP','#20e3c9');label.position.y=3.1;root.add(label);
+root.position.set(pos.x,0,pos.z);scene.add(root);people.push(root);
+}
+function positionCar(){taxi.position.set(player.x,0,player.z);taxi.rotation.y=player.yaw;}
 function ensureAudio(){if(!soundOn||audioCtx)return;try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();engineOsc=audioCtx.createOscillator();const filter=audioCtx.createBiquadFilter();engineGain=audioCtx.createGain();engineOsc.type='sawtooth';engineOsc.frequency.value=58;filter.type='lowpass';filter.frequency.value=210;engineGain.gain.value=.0001;engineOsc.connect(filter);filter.connect(engineGain);engineGain.connect(audioCtx.destination);engineOsc.start();}catch{audioCtx=null;}}
 function updateEngineAudio(){if(!audioCtx||!engineOsc||!engineGain)return;const active=soundOn&&!paused;const speed=Math.abs(player.speed);engineOsc.frequency.setTargetAtTime(52+speed*3.1,audioCtx.currentTime,.08);engineGain.gain.setTargetAtTime(active?.003+Math.min(speed/30,.012):.0001,audioCtx.currentTime,.12);}
 function toast(msg){$('toast').textContent=msg;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2500);}
@@ -511,8 +522,8 @@ return {...result,fromCache:false,savedAt:Date.now()};
 if(stale?.data?.roads?.length)return {...stale.data,fromCache:true,stale:true,savedAt:stale.savedAt};
 throw lastError||new Error('OpenStreetMap data unavailable');
 }
-async function start(){try{const data=await loadOSM();mapWays=data.roads; $('loadingText').textContent='Creating the road network and city blocks…';buildRoadMesh(data.roads);addBuildings(data.bldgs);addRoadGraph(data.roads);buildStreetFurniture(data.roads);const spawn=nearestNode({x:player.x,z:player.z});if(spawn){player.x=spawn.x;player.z=spawn.z;const next=(adjacency.get(spawn.key)||[])[0],nextNode=next&&graphNodeByKey.get(next.key);if(nextNode)player.yaw=Math.atan2(nextNode.x-spawn.x,-(nextNode.z-spawn.z));}buildStreetFurniture(data.roads);makeTraffic();mapLoaded=true;$('mapState').textContent=data.fromCache?'CACHED OSM':'LIVE OSM';$('mapCounts').textContent=data.roads.length.toLocaleString()+' roads · '+data.bldgs.length.toLocaleString()+' buildings';$('loading').style.display='none';toast(data.fromCache?'Karachi map loaded from saved browser cache':'Karachi map downloaded and saved for next time');}catch(e){$('loading').innerHTML='<b>Karachi map could not load</b><small>'+String(e?.message||e)+'<br><br>Check internet access and reload the page. The game will not substitute a fake Karachi map.</small><div class="panel-actions"><button class="primary" onclick="location.reload()">Retry map download</button></div>';$('mapState').textContent='Offline';return;}
-positionCar();camera.position.set(player.x-15,10,player.z+18);camera.lookAt(player.x,1,player.z);updateStats();applyLanguage();$('modal').classList.remove('hidden');paused=true;gameStarted=false;requestAnimationFrame(animate);}
+async function start(){try{const data=await loadOSM();mapWays=data.roads; $('loadingText').textContent='Creating the road network and city blocks…';buildRoadMesh(data.roads);addBuildings(data.bldgs);addRoadGraph(data.roads);const spawn=nearestNode({x:player.x,z:player.z});if(spawn){player.x=spawn.x;player.z=spawn.z;const next=(adjacency.get(spawn.key)||[])[0],nextNode=next&&graphNodeByKey.get(next.key);if(nextNode)player.yaw=Math.atan2(nextNode.x-spawn.x,-(nextNode.z-spawn.z));}buildStreetFurniture(data.roads);makeTraffic();mapLoaded=true;$('mapState').textContent=data.fromCache?'CACHED OSM':'LIVE OSM';$('mapCounts').textContent=data.roads.length.toLocaleString()+' roads · '+data.bldgs.length.toLocaleString()+' buildings';$('loading').style.display='none';toast(data.fromCache?'Karachi map loaded from saved browser cache':'Karachi map downloaded and saved for next time');}catch(e){$('loading').innerHTML='<b>Karachi map could not load</b><small>'+String(e?.message||e)+'<br><br>Check internet access and reload the page. The game will not substitute a fake Karachi map.</small><div class="panel-actions"><button class="primary" onclick="location.reload()">Retry map download</button></div>';$('mapState').textContent='Offline';return;}
+positionCar();updateCamera(1/60);updateStats();applyLanguage();$('modal').classList.remove('hidden');paused=true;gameStarted=false;requestAnimationFrame(animate);}
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));});document.addEventListener('visibilitychange',()=>{if(document.hidden&&!paused)openMenu();});
 $('startDrive').addEventListener('click',()=>{paused=false;gameStarted=true;$('modal').classList.add('hidden');});
 start();
