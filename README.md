@@ -109,7 +109,7 @@ Open:
 Build the SawariEditor target in Visual Studio 2022. Run the level creation helper **inside Unreal Editor** after the C++ module has compiled.
 
 Use either:
-1. Unreal Editor menu **Tools → Execute Python Script**, then select `Scripts/create_sawari_level.py`; or
+1. Unreal Editor menu **File → Execute Python Script**, then select `Scripts/create_sawari_level.py`; or
 2. Open **Window → Developer Tools → Output Log**, use the Python console input and run:
 
        py "C:/Users/YOUR_WINDOWS_USER/Documents/GitHub/Sawari/Scripts/create_sawari_level.py"
@@ -150,7 +150,7 @@ The HUD shows active vehicle speed, wallet balance, ride state and navigation. W
 
 When real OSM data is loaded, the traffic manager selects extracted drivable road polylines and spawns a capped set of moving NPC cars. Cars follow extracted two-way road polylines with left-hand lane offsets, sweep against collisions and slow down when blocked. One-way-tagged roads are excluded from this first bidirectional traffic follower so NPCs are not sent against one-way direction. At the end of an individual OSM way, the NPC restarts at that way's beginning; connected junction routing is still future work.
 
-This is the first traffic simulation layer—not a finished Karachi traffic model. The new connected road graph is used for player navigation; NPC traffic still follows individual road polylines. Junction priority, traffic-light control, lane-changing, overtaking, bus/rickshaw behaviour and graph-based NPC junction decisions remain future tasks.
+This is the first traffic simulation layer—not a finished Karachi traffic model. The connected road graph is used for player navigation; NPC traffic still follows individual road polylines. Junction priority, traffic-light control, lane-changing, overtaking, bus/rickshaw behaviour and graph-based NPC junction decisions remain future tasks.
 
 ## Offline packaging and OSM attribution
 
