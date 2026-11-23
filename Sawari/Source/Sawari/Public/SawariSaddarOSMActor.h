@@ -10,6 +10,18 @@ class UStaticMesh;
 class UMaterialInterface;
 class UPrimitiveComponent;
 
+struct FSawariRoadGraphEdge
+{
+    int32 TargetNode = INDEX_NONE;
+    float DistanceCm = 0.0f;
+};
+
+struct FSawariRoadGraphNode
+{
+    FVector Location = FVector::ZeroVector;
+    TArray<FSawariRoadGraphEdge> Outgoing;
+};
+
 /**
  * Loads bundled OpenStreetMap GeoJSON for the Saddar-Clifton prototype corridor.
  * The game performs no network requests; Scripts/fetch_saddar_osm.py stages the
@@ -44,6 +56,9 @@ public:
 
     const TArray<TArray<FVector>>& GetTrafficRoutes() const { return TrafficRoutes; }
 
+    /** Finds the shortest connected, direction-aware OSM road route between two world positions. */
+    bool FindDrivingRoute(const FVector& StartWorld, const FVector& EndWorld, TArray<FVector>& OutRoute) const;
+
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sawari|Map")
     TObjectPtr<UBoxComponent> GroundCollider;
@@ -73,7 +88,11 @@ private:
     double LongitudeScale = 101800.0;
 
     TArray<TArray<FVector>> TrafficRoutes;
+    TArray<FSawariRoadGraphNode> NavigationGraph;
+    TMap<FIntPoint, int32> NavigationNodeLookup;
 
+    int32 GetOrAddNavigationNode(const FVector& WorldLocation);
+    void AddNavigationEdge(int32 FromNode, int32 ToNode);
     bool LoadManifest();
     bool LoadRoads();
     bool LoadBuildings();
