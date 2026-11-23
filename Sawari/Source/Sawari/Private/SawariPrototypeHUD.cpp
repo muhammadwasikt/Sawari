@@ -51,41 +51,42 @@ void ASawariPrototypeHUD::DrawHUD()
     const APawn* Taxi = PlayerOwner->GetPawn();
     if (Taxi && GameMode)
     {
-        if (Rides->RideState == ESawariRideState::Requested || Rides->RideState == ESawariRideState::Accepted)
+        if (Rides->RideState == ESawariRideState::Requested || Rides->RideState == ESawariRideState::Accepted
+            || Rides->RideState == ESawariRideState::PassengerOnboard)
         {
-            const float DistanceMeters = FVector::Dist2D(Taxi->GetActorLocation(), GameMode->GetPickupCheckpoint()) / 100.0f;
-            Draw(FString::Printf(TEXT("PICKUP DISTANCE  %.0f m"), DistanceMeters),
-                40.0f, 216.0f, 0.82f, FLinearColor(1.0f, 0.78f, 0.25f));
-        }
-        else if (Rides->RideState == ESawariRideState::PassengerOnboard)
-        {
-            const float DistanceMeters = FVector::Dist2D(Taxi->GetActorLocation(), GameMode->GetDropoffCheckpoint()) / 100.0f;
-            Draw(FString::Printf(TEXT("DESTINATION DISTANCE  %.0f m"), DistanceMeters),
-                40.0f, 216.0f, 0.82f, FLinearColor(0.25f, 0.95f, 0.62f));
+            const TCHAR* RouteLabel = GameMode->HasRoadNavigationRoute()
+                ? TEXT("ROAD ROUTE") : TEXT("DIRECT DISTANCE");
+            const FLinearColor RouteColor = Rides->RideState == ESawariRideState::PassengerOnboard
+                ? FLinearColor(0.25f, 0.95f, 0.62f) : FLinearColor(1.0f, 0.78f, 0.25f);
+            Draw(FString::Printf(TEXT("%s  %.1f km"), RouteLabel,
+                GameMode->GetNavigationDistanceMeters() / 1000.0f),
+                40.0f, 216.0f, 0.82f, RouteColor);
+            Draw(GameMode->GetNavigationInstruction(),
+                40.0f, 246.0f, 0.76f, FLinearColor::White);
         }
     }
 
     switch (Rides->RideState)
     {
         case ESawariRideState::Idle:
-            Draw(TEXT("STATUS  DRIVER OFFLINE - PRESS R FOR A RIDE"), 40.0f, 254.0f, 0.90f, FLinearColor(0.80f, 0.83f, 0.88f));
+            Draw(TEXT("STATUS  DRIVER OFFLINE - PRESS R FOR A RIDE"), 40.0f, 280.0f, 0.90f, FLinearColor(0.80f, 0.83f, 0.88f));
             break;
         case ESawariRideState::Requested:
-            Draw(TEXT("NEW REQUEST  /  AHMED K.  /  4.8 STARS"), 40.0f, 254.0f, 0.90f, FLinearColor(1.0f, 0.78f, 0.25f));
-            Draw(FString::Printf(TEXT("SADDAR PICKUP  ->  CLIFTON  /  EST. %d COINS"), Rides->CurrentRide.EstimatedFareCoins), 40.0f, 290.0f, 0.78f, FLinearColor::White);
-            Draw(TEXT("Press E to accept or Q to decline"), 40.0f, 324.0f, 0.78f, FLinearColor::White);
+            Draw(TEXT("NEW REQUEST  /  AHMED K.  /  4.8 STARS"), 40.0f, 280.0f, 0.90f, FLinearColor(1.0f, 0.78f, 0.25f));
+            Draw(FString::Printf(TEXT("SADDAR PICKUP  ->  CLIFTON  /  EST. %d COINS"), Rides->CurrentRide.EstimatedFareCoins), 40.0f, 316.0f, 0.78f, FLinearColor::White);
+            Draw(TEXT("Press E to accept or Q to decline"), 40.0f, 350.0f, 0.78f, FLinearColor::White);
             break;
         case ESawariRideState::Accepted:
-            Draw(TEXT("RIDE ACCEPTED  /  DRIVE TO THE YELLOW PICKUP BEACON"), 40.0f, 254.0f, 0.90f, FLinearColor(1.0f, 0.78f, 0.25f));
-            Draw(TEXT("Stop close to the visible passenger to begin the trip"), 40.0f, 290.0f, 0.78f, FLinearColor::White);
+            Draw(TEXT("RIDE ACCEPTED  /  DRIVE TO THE YELLOW PICKUP BEACON"), 40.0f, 280.0f, 0.90f, FLinearColor(1.0f, 0.78f, 0.25f));
+            Draw(TEXT("Stop close to the visible passenger to begin the trip"), 40.0f, 316.0f, 0.78f, FLinearColor::White);
             break;
         case ESawariRideState::PassengerOnboard:
-            Draw(TEXT("PASSENGER ONBOARD  /  FOLLOW THE ROAD TO GREEN DESTINATION"), 40.0f, 254.0f, 0.90f, FLinearColor(0.25f, 0.95f, 0.62f));
-            Draw(TEXT("Stop at the green destination beacon to complete the ride"), 40.0f, 290.0f, 0.78f, FLinearColor::White);
+            Draw(TEXT("PASSENGER ONBOARD  /  FOLLOW THE ROAD TO GREEN DESTINATION"), 40.0f, 280.0f, 0.90f, FLinearColor(0.25f, 0.95f, 0.62f));
+            Draw(TEXT("Stop at the green destination beacon to complete the ride"), 40.0f, 316.0f, 0.78f, FLinearColor::White);
             break;
         case ESawariRideState::Completed:
-            Draw(FString::Printf(TEXT("RIDE COMPLETED  /  DRIVER EARNED %d COINS"), Rides->GetLastDriverPayoutCoins()), 40.0f, 254.0f, 0.90f, FLinearColor(0.25f, 0.95f, 0.62f));
-            Draw(FString::Printf(TEXT("PLATFORM FEE %d COINS  /  PRESS R FOR NEXT RIDE"), Rides->GetLastPlatformFeeCoins()), 40.0f, 290.0f, 0.78f, FLinearColor::White);
+            Draw(FString::Printf(TEXT("RIDE COMPLETED  /  DRIVER EARNED %d COINS"), Rides->GetLastDriverPayoutCoins()), 40.0f, 280.0f, 0.90f, FLinearColor(0.25f, 0.95f, 0.62f));
+            Draw(FString::Printf(TEXT("PLATFORM FEE %d COINS  /  PRESS R FOR NEXT RIDE"), Rides->GetLastPlatformFeeCoins()), 40.0f, 316.0f, 0.78f, FLinearColor::White);
             break;
         default:
             break;
