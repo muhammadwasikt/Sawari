@@ -1,7 +1,7 @@
 """Create and save the first playable Sawari Unreal map.
 
 Run ONLY inside Unreal Editor after the Sawari C++ module has compiled.
-Use Tools > Execute Python Script, or Unreal's Output Log Python console:
+Use File > Execute Python Script, or Unreal's Output Log console:
     py "C:/actual/path/to/Sawari/Scripts/create_sawari_level.py"
 
 This is not standalone Python: the 'unreal' module is provided by the
@@ -20,14 +20,20 @@ GAME_MODE_PATH = "/Script/Sawari.SawariGameMode"
 
 
 def main():
+    # Use the UE 5.8 editor subsystems instead of the deprecated
+    # EditorLevelLibrary / EditorLevelActor APIs.
+    level_editor = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+    editor = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
+    actors = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+
     if not unreal.EditorAssetLibrary.does_asset_exist(MAP_OBJECT):
-        if not unreal.EditorLevelLibrary.new_level(MAP_PACKAGE):
+        if not level_editor.new_level(MAP_PACKAGE):
             raise RuntimeError("Unreal could not create " + MAP_PACKAGE)
     else:
-        if not unreal.EditorLevelLibrary.load_level(MAP_PACKAGE):
+        if not level_editor.load_level(MAP_PACKAGE):
             raise RuntimeError("Unreal could not load " + MAP_PACKAGE)
 
-    world = unreal.EditorLevelLibrary.get_editor_world()
+    world = editor.get_editor_world()
     if not world:
         raise RuntimeError("No editor world is active")
 
@@ -37,15 +43,18 @@ def main():
         raise RuntimeError("SawariGameMode was not loaded. Compile the Sawari C++ module first.")
     world_settings.set_editor_property("default_game_mode", game_mode_class)
 
-    # Add a PlayerStart for editor friendliness; the GameMode spawns and
-    # possesses its taxi at the known boulevard position itself.
-    player_starts = unreal.EditorLevelLibrary.get_all_level_actors()
+    # Add a PlayerStart for editor friendliness; GameMode spawns and possesses
+    # its taxi at the known boulevard position itself.
+    player_starts = actors.get_all_level_actors()
     if not any(isinstance(actor, unreal.PlayerStart) for actor in player_starts):
-        unreal.EditorLevelLibrary.spawn_actor_from_class(
-            unreal.PlayerStart, unreal.Vector(-180000.0, 0.0, 150.0), unreal.Rotator(0.0, 0.0, 0.0)
+        actors.spawn_actor_from_class(
+            unreal.PlayerStart,
+            unreal.Vector(-180000.0, 0.0, 150.0),
+            unreal.Rotator(0.0, 0.0, 0.0),
         )
 
-    unreal.EditorLevelLibrary.save_current_level()
+    if not level_editor.save_current_level():
+        raise RuntimeError("Unreal could not save " + MAP_PACKAGE)
 
     project_dir = Path(unreal.Paths.project_dir())
     config_path = project_dir / "Config" / "DefaultEngine.ini"
