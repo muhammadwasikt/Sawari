@@ -195,6 +195,181 @@ FVector ASawariSaddarOSMActor::GeoToWorld(double Latitude, double Longitude, dou
     return GetActorTransform().TransformPosition(FVector(X, Y, Z));
 }
 
+int32 ASawariSaddarOSMActor::GetOrAddNavigationNode(const FVector& WorldLocation)
+{
+    // OSM ways that share the same mapped node resolve to the same quantized
+    // local-world point. A 25 cm grid absorbs harmless floating-point noise
+    // without merging nearby parallel carriageways.
+    const FIntPoint Key(
+        FMath::RoundToInt(WorldLocation.X / 25.0f),
+        FMath::RoundToInt(WorldLocation.Y / 25.0f));
+
+    if (const int32* Existing = NavigationNodeLookup.Find(Key))
+    {
+        return *Existing;
+    }
+
+    const int32 NewIndex = NavigationGraph.AddDefaulted();
+    NavigationGraph[NewIndex].Location = WorldLocation;
+    NavigationNodeLookup.Add(Key, NewIndex);
+    return NewIndex;
+}
+
+void ASawariSaddarOSMActor::AddNavigationEdge(int32 FromNode, int32 ToNode)
+{
+    if (!NavigationGraph.IsValidIndex(FromNode) || !NavigationGraph.IsValidIndex(ToNode)
+        || FromNode == ToNode)
+    {
+        return;
+    }
+
+    FSawariRoadGraphNode& Node = NavigationGraph[FromNode];
+    for (const FSawariRoadGraphEdge& Existing : Node.Outgoing)
+    {
+        if (Existing.TargetNode == ToNode) return;
+    }
+
+    FSawariRoadGraphEdge Edge;
+    Edge.TargetNode = ToNode;
+    Edge.DistanceCm = FVector::Dist2D(Node.Location, NavigationGraph[ToNode].Location);
+    if (Edge.DistanceCm > 1.0f)
+    {
+        Node.Outgoing.Add(Edge);
+    }
+}
+
+bool ASawariSaddarOSMActor::FindDrivingRoute(
+    const FVector& StartWorld,
+    const FVector& EndWorld,
+    TArray<FVector>& OutRoute) const
+{
+    OutRoute.Reset();
+    const int32 NodeCount = NavigationGraph.Num();
+    if (NodeCount < 2) return false;
+
+    int32 StartNode = INDEX_NONE;
+    int32 GoalNode = INDEX_NONE;
+    double StartNearest = TNumericLimits<double>::Max();
+    double GoalNearest = TNumericLimits<double>::Max();
+
+    for (int32 Index = 0; Index < NodeCount; ++Index)
+    {
+        const double StartDistance = FVector::DistSquared2D(StartWorld, NavigationGraph[Index].Location);
+        if (StartDistance < StartNearest)
+        {
+            StartNearest = StartDistance;
+            StartNode = Index;
+        }
+
+        const double GoalDistance = FVector::DistSquared2D(EndWorld, NavigationGraph[Index].Location);
+        if (GoalDistance < GoalNearest)
+        {
+            GoalNearest = GoalDistance;
+            GoalNode = Index;
+        }
+    }
+
+    if (StartNode == INDEX_NONE || GoalNode == INDEX_NONE) return false;
+
+    struct FQueueEntry
+    {
+        double Cost = 0.0;
+        int32 Node = INDEX_NONE;
+    };
+
+    // A small binary min-heap keeps Dijkstra practical for a city-sized graph.
+    TArray<FQueueEntry> Heap;
+    auto PushHeap = [&Heap](double Cost, int32 Node)
+    {
+        int32 Index = Heap.Add(FQueueEntry{ Cost, Node });
+        while (Index > 0)
+        {
+            const int32 Parent = (Index - 1) / 2;
+            if (Heap[Parent].Cost <= Heap[Index].Cost) break;
+            Swap(Heap[Parent], Heap[Index]);
+            Index = Parent;
+        }
+    };
+    auto PopHeap = [&Heap]() -> FQueueEntry
+    {
+        const FQueueEntry Result = Heap[0];
+        const FQueueEntry Last = Heap.Pop(false);
+        if (Heap.Num() > 0)
+        {
+            Heap[0] = Last;
+            int32 Index = 0;
+            while (true)
+            {
+                const int32 Left = Index * 2 + 1;
+                const int32 Right = Left + 1;
+                int32 Smallest = Index;
+                if (Left < Heap.Num() && Heap[Left].Cost < Heap[Smallest].Cost) Smallest = Left;
+                if (Right < Heap.Num() && Heap[Right].Cost < Heap[Smallest].Cost) Smallest = Right;
+                if (Smallest == Index) break;
+                Swap(Heap[Index], Heap[Smallest]);
+                Index = Smallest;
+            }
+        }
+        return Result;
+    };
+
+    TArray<double> Distances;
+    Distances.Init(TNumericLimits<double>::Max(), NodeCount);
+    TArray<int32> Previous;
+    Previous.Init(INDEX_NONE, NodeCount);
+
+    Distances[StartNode] = 0.0;
+    PushHeap(0.0, StartNode);
+
+    while (Heap.Num() > 0)
+    {
+        const FQueueEntry Current = PopHeap();
+        if (Current.Cost > Distances[Current.Node]) continue;
+        if (Current.Node == GoalNode) break;
+
+        for (const FSawariRoadGraphEdge& Edge : NavigationGraph[Current.Node].Outgoing)
+        {
+            if (!NavigationGraph.IsValidIndex(Edge.TargetNode)) continue;
+            const double Candidate = Current.Cost + Edge.DistanceCm;
+            if (Candidate < Distances[Edge.TargetNode])
+            {
+                Distances[Edge.TargetNode] = Candidate;
+                Previous[Edge.TargetNode] = Current.Node;
+                PushHeap(Candidate, Edge.TargetNode);
+            }
+        }
+    }
+
+    if (StartNode != GoalNode && Previous[GoalNode] == INDEX_NONE) return false;
+
+    TArray<int32> ReversePath;
+    int32 Cursor = GoalNode;
+    while (Cursor != INDEX_NONE && ReversePath.Num() <= NodeCount)
+    {
+        ReversePath.Add(Cursor);
+        if (Cursor == StartNode) break;
+        Cursor = Previous[Cursor];
+    }
+    if (ReversePath.Num() == 0 || ReversePath.Last() != StartNode) return false;
+
+    Algo::Reverse(ReversePath);
+    OutRoute.Add(StartWorld);
+    for (const int32 NodeIndex : ReversePath)
+    {
+        const FVector Point = NavigationGraph[NodeIndex].Location;
+        if (FVector::DistSquared2D(OutRoute.Last(), Point) > 625.0)
+        {
+            OutRoute.Add(Point);
+        }
+    }
+    if (FVector::DistSquared2D(OutRoute.Last(), EndWorld) > 625.0)
+    {
+        OutRoute.Add(EndWorld);
+    }
+
+    return OutRoute.Num() >= 2;
+}
+
 FVector ASawariSaddarOSMActor::SnapToNearestRoad(const FVector& WorldPoint) const
 {
     FVector BestPoint = WorldPoint;
@@ -357,13 +532,35 @@ void ASawariSaddarOSMActor::BuildRoadMeshes(const TArray<TSharedPtr<FJsonValue>>
         }
         if (Points.Num() < 2) continue;
 
-        // Save full drivable OSM way polylines for the AI traffic system.
+        // Build a direction-aware graph for route navigation. OSM's oneway=-1
+        // means the permitted direction is opposite to the stored way order.
         FString OneWayTag;
-        const bool bOneWay = PropertiesPtr && PropertiesPtr->IsValid()
-            && PropertiesPtr->Get()->TryGetStringField(TEXT("oneway"), OneWayTag)
+        const bool bHasOneWayTag = PropertiesPtr && PropertiesPtr->IsValid()
+            && PropertiesPtr->Get()->TryGetStringField(TEXT("oneway"), OneWayTag);
+        const bool bOneWay = bHasOneWayTag
             && (OneWayTag == TEXT("yes") || OneWayTag == TEXT("true")
                 || OneWayTag == TEXT("1") || OneWayTag == TEXT("-1"));
 
+        TArray<FVector> DirectedPoints = Points;
+        if (OneWayTag == TEXT("-1"))
+        {
+            Algo::Reverse(DirectedPoints);
+        }
+
+        for (int32 PointIndex = 0; PointIndex < DirectedPoints.Num() - 1; ++PointIndex)
+        {
+            const FVector WorldA = GetActorTransform().TransformPosition(DirectedPoints[PointIndex]);
+            const FVector WorldB = GetActorTransform().TransformPosition(DirectedPoints[PointIndex + 1]);
+            const int32 NodeA = GetOrAddNavigationNode(WorldA);
+            const int32 NodeB = GetOrAddNavigationNode(WorldB);
+            AddNavigationEdge(NodeA, NodeB);
+            if (!bOneWay)
+            {
+                AddNavigationEdge(NodeB, NodeA);
+            }
+        }
+
+        // Save full drivable OSM way polylines for the AI traffic system.
         if (!bOneWay && Points.Num() >= 2 && (HighwayType == TEXT("primary") || HighwayType == TEXT("secondary")
             || HighwayType == TEXT("tertiary") || HighwayType == TEXT("residential")
             || HighwayType == TEXT("unclassified") || HighwayType == TEXT("trunk")
