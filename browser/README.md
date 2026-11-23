@@ -1,31 +1,36 @@
-# Sawari Browser Game — first playable milestone
+# Sawari Browser Game — Karachi taxi-driving prototype
 
-This is a standalone Three.js browser version of Sawari. It runs without Unreal Engine.
+This is an independent Three.js browser build. It runs in Chrome without Unreal Engine.
 
-## Implemented
-- Third-person 3D yellow taxi, chase camera, keyboard driving and touch steering wheel/pedals.
-- Touch accelerator and brake stay active for as long as the player holds the pedal.
-- The taxi spawns on the nearest downloaded OpenStreetMap road node.
-- Saddar–Clifton roads and building footprints load from OpenStreetMap Overpass at runtime; a map failure is shown rather than replacing Karachi with fabricated streets.
-- 3D road surfaces and extruded OSM building footprints. Buildings are batched by material to reduce draw calls; collision checks use the building footprint polygon.
-- Basic ambient road traffic, road-graph shortest route, passenger pickup/drop-off and route markers.
-- Fare calculation with 85% driver / 15% platform split, wallet, daily target, three upgrade tracks and local saved career.
-- English/Urdu interface, simple synthesized engine sound, responsive desktop/mobile layout and pause-on-tab-hide.
+## What this build contains
+- Third-person 3D taxi driving, a following camera with three camera distances, desktop WASD/arrow keys and mobile touch steering/pedals.
+- Three selectable original game-made body silhouettes: Suzuki Mehran-style compact hatchback, Suzuki Alto-style tall hatchback and Toyota Corolla-style sedan. These are procedural meshes for gameplay, not licensed manufacturer CAD models.
+- Saddar–Clifton roads and building ways from OpenStreetMap, shown in the correct geographic corridor.
+- Procedural 3D roads with lane dashes and sidewalks; OSM building footprints are converted into vertical walls and roofs, with procedural window panes and rooftop tanks. Buildings without surveyed height tags use an estimated height.
+- A few road-side streetlight fixtures and simple ambient traffic.
+- A mini-map with the taxi, green pickup marker (P), yellow drop-off marker (D), current route and named OSM road guidance where a road name exists.
+- Passenger pickup/drop-off, passenger NPC, 85% driver / 15% platform fare split, local wallet, daily target, vehicle upgrades and locally saved career.
+- English / Urdu interface, engine sound toggle and responsive desktop/mobile layout.
 
-## Run on a computer
-From the repository root, run:
+## Map download behaviour
+The first visit downloads the Saddar–Clifton OSM extract from a public Overpass endpoint. The successful extract is stored in the browser's IndexedDB cache for up to 90 days; normal reloads read the saved copy and do not request the full map again. Internet is required for the first download. In Settings → Karachi map data → Refresh map, the player can explicitly clear the cache and download a fresh copy. If the cache is cleared by the browser or the user opens another browser/device, that browser needs its own first download.
+
+## Run locally
+From the repository root:
 ```bash
 python -m http.server 8000
 ```
-Open http://localhost:8000/browser/ in Chrome or another modern browser. The game uses ES modules, so opening the file directly with `file://` is not supported.
+Open http://localhost:8000/browser/ in Chrome. Do not open the HTML file directly with `file://`; the game uses JavaScript modules.
 
-## Publish on GitHub Pages
-This project repository is private at the moment. GitHub Free supports GitHub Pages for public repositories; private repository Pages needs a paid plan. After the owner changes this repository to public:
-1. Open Settings → Pages and choose **GitHub Actions** as the publishing source.
-2. Open Actions → **Deploy Sawari Browser Game** → **Run workflow**.
-3. After the first successful deployment, open the Pages URL shown in the workflow's deployment environment. The root page redirects into `/browser/`.
+## Publish
+The GitHub Pages workflow is manual-only to avoid unnecessary Actions runs. The repository owner can select GitHub Actions under Settings → Pages, then run **Deploy Sawari Browser Game** from the Actions tab. The root URL redirects into `/browser/`.
 
-The deployment workflow is manual-only to avoid unnecessary Actions runs. Run it again after publishing changes to `main`.
+## Known gaps — this is not yet the finished simulator
+- This is still a first playable vertical slice, not a photorealistic or fully verified production game.
+- OSM provides geographic road and building data, but not complete photographed building facades, interiors, shop signs, local street clutter or every landmark. Buildings are procedural representations based on footprints and often estimated heights, not exact architectural replicas.
+- The Mehran/Alto/Corolla choices are original game-made approximations of those body types. Exact manufacturer-grade 3D vehicle models, detailed interiors, steering rigs and realistic damage physics still need suitable licensed assets and integration.
+- Traffic is a basic moving-car layer without junction signals, lane-changing, overtaking, rickshaw/bus behaviours or advanced collision avoidance.
+- Navigation uses the local road graph and a mini-map; it does not yet include full voice turn-by-turn navigation or a production routing engine.
+- The initial OSM download can fail when public Overpass endpoints are busy or unavailable. A previously cached extract remains usable offline in the same browser.
 
-## Known limitations
-This is a first playable vertical slice, not the finished realistic city simulator. OSM ways are used for road/building geometry; relation-only building footprints may be missing. Buildings are massing models, not detailed facades or Karachi landmarks. Traffic is a basic moving-car layer without signals, lane changes, overtaking, rickshaws/buses or advanced collision avoidance. There is no full turn-by-turn voice navigation or multi-vehicle garage/unlock tree yet. The map is downloaded at game launch from a public Overpass endpoint, so internet and a responsive endpoint are needed on first load; Three.js is imported from jsDelivr. Map attribution to OpenStreetMap contributors is displayed in-game; data is under ODbL: https://www.openstreetmap.org/copyright.
+OpenStreetMap attribution is displayed in-game. Map data is available under ODbL: https://www.openstreetmap.org/copyright.

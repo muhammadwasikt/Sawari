@@ -363,19 +363,21 @@ function settingsHtml(){return '<div class="eyebrow">PREFERENCES</div><h2>Settin
 function bindPanel(){document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.action;if(a==='drive')closePanel();if(a==='jobs')showPanel(jobsHtml());if(a==='garage')showPanel(garageHtml());if(a==='settings')showPanel(settingsHtml());if(a==='back')openMenu();if(a==='language'){lang=lang==='en'?'ur':'en';showPanel(settingsHtml());applyLanguage();}if(a==='sound'){soundOn=!soundOn;if(soundOn){ensureAudio();audioCtx?.resume?.();}if(engineGain)engineGain.gain.setTargetAtTime(soundOn?.008:.0001,audioCtx.currentTime,.08);showPanel(settingsHtml());}if(a==='refresh-map'){clearMapCache().then(()=>location.reload()).catch(()=>location.reload());}if(a==='reset'){career={wallet:0,today:0,target:2500,engine:0,handling:0,brakes:0,rides:0};save();updateStats();toast('Career reset');openMenu();}}));document.querySelectorAll('[data-job]').forEach(b=>b.addEventListener('click',()=>{startJob(Number(b.dataset.job));closePanel();}));document.querySelectorAll('[data-car]').forEach(b=>b.addEventListener('click',()=>{buildTaxiModel(b.dataset.car);save();showPanel(garageHtml());toast('Selected '+vehicleSpecs[selectedCar].name);}));document.querySelectorAll('[data-upgrade]').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.upgrade,cost=450+career[k]*350;if(career.wallet<cost){toast('Not enough wallet balance');return;}career.wallet-=cost;career[k]++;save();updateStats();showPanel(garageHtml());}));}
 function startJob(kind){
 if(!roadNodes.length){toast('Road network is still loading');return;}
-const current=nearestNode({x:player.x,z:player.z});
-let pick=markerAtRoad(),drop=markerAtRoad();
-const candidates=roadNodes.filter(n=>n.roadName&&n.roadName!=='Unnamed local street');
-const pool=candidates.length?candidates:roadNodes;
-for(let i=0;i<600;i++){
-const candidate=pool[Math.floor(Math.random()*pool.length)],d=Math.hypot(candidate.x-player.x,candidate.z-player.z);
-if(d>280&&d<1150){pick=candidate;break;}
-}
-for(let i=0;i<1000;i++){
-const candidate=pool[Math.floor(Math.random()*pool.length)],d=Math.hypot(candidate.x-pick.x,candidate.z-pick.z);
-if(d>1000&&d<3600){drop=candidate;break;}
-}
-const areaName=(node)=>node.lat?(node.lat>24.85?'Saddar':node.lat>24.83?'Saddar / Clifton':'Clifton'):'Karachi';
+const all=roadNodes.filter(n=>n.roadName&&n.roadName!=='Unnamed local street'),pool=all.length?all:roadNodes;
+const zone=n=>n.lat>24.849?'saddar':n.lat>24.829?'clifton':'coast';
+const pickupZone=kind===1?'clifton':'saddar',dropZone=kind===1?'saddar':kind===2?'coast':'clifton';
+let pickPool=pool.filter(n=>zone(n)===pickupZone),dropPool=pool.filter(n=>zone(n)===dropZone);
+if(pickPool.length<10)pickPool=pool;
+if(dropPool.length<10)dropPool=pool;
+const choosePickup=()=>{
+const sorted=pickPool.map(n=>({n,d:Math.hypot(n.x-player.x,n.z-player.z)})).filter(x=>x.d>120&&x.d<2400).sort((a,b)=>a.d-b.d);
+return sorted[Math.min(sorted.length-1,Math.floor(Math.random()*Math.min(12,sorted.length))) ]?.n || nearestNode({x:player.x,z:player.z});
+};
+let pick=choosePickup()||markerAtRoad(),drop=null;
+const candidates=dropPool.map(n=>({n,d:Math.hypot(n.x-pick.x,n.z-pick.z)})).filter(x=>x.d>900&&x.d<4700);
+if(candidates.length){const sorted=candidates.sort((a,b)=>a.d-b.d);drop=sorted[Math.min(sorted.length-1,Math.floor(Math.random()*Math.min(30,sorted.length)))].n;}
+if(!drop)drop=pool.reduce((best,n)=>!best||Math.hypot(n.x-pick.x,n.z-pick.z)>Math.hypot(best.x-pick.x,best.z-pick.z)?n:best,null)||markerAtRoad();
+const areaName=n=>n.lat?(n.lat>24.849?'Saddar':n.lat>24.829?'Clifton':'Clifton coast'):'Karachi';
 const pickupName=pick.roadName&&pick.roadName!=='Unnamed local street'?pick.roadName:areaName(pick)+' local road';
 const dropName=drop.roadName&&drop.roadName!=='Unnamed local street'?drop.roadName:areaName(drop)+' local road';
 job={stage:'pickup',pickup:{x:pick.x,z:pick.z},drop:{x:drop.x,z:drop.z},pickupName,dropName,label:'Pickup · '+pickupName,destination:'Drop-off · '+dropName,distance:Math.hypot(drop.x-pick.x,drop.z-pick.z)};
@@ -387,7 +389,7 @@ $('jobEyebrow').dataset.en='Passenger pickup';$('jobEyebrow').textContent=lang==
 $('jobTitle').dataset.en=job.label;$('jobTitle').textContent=job.label;
 $('jobDetail').dataset.en='Pickup: '+pickupName+' · Drop-off: '+dropName;
 $('jobDetail').textContent='Pickup: '+pickupName+' · Drop-off: '+dropName;
-$('routeDetail').textContent='Follow the green P marker · Map shown at upper-right';
+$('routeDetail').textContent='Follow the green P marker · Mini map shows P and D';
 $('mapTarget').textContent='PICKUP · '+pickupName;
 toast('Ride accepted — follow green P on the mini map and in the 3D street');
 }

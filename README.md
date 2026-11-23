@@ -1,6 +1,6 @@
 ## Browser version — no Unreal Engine required
 
-A standalone 3D browser build is being developed in `browser/`. It uses Three.js and live OpenStreetMap roads/building footprints for a Saddar–Clifton taxi-driving prototype. Open [browser/README.md](browser/README.md) for local run instructions, deployment steps and the current feature/limitation list. This is an early playable vertical slice, not the completed simulator; browser and mobile gameplay testing is still pending.
+The repository now contains an independent Three.js taxi-driving build in `browser/`. It includes OSM-based Saddar–Clifton roads/building footprints, IndexedDB map caching, procedural building façades, road-side fixtures, a taxi mini-map and selectable Mehran/Alto/Corolla-style car bodies. It remains an early vertical slice, not a finished or fully browser-QA-verified simulator. Run and limitation details: [browser/README.md](browser/README.md).
 
 ---
 
