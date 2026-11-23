@@ -1,10 +1,14 @@
 """Create and save the first playable Sawari Unreal map.
 
-Run from the Unreal Editor Python console after the Sawari C++ module has
-compiled: py "ABSOLUTE_PATH_TO_REPO/Scripts/create_sawari_level.py"
+Run ONLY inside Unreal Editor after the Sawari C++ module has compiled.
+Use Tools > Execute Python Script, or Unreal's Output Log Python console:
+    py "C:/actual/path/to/Sawari/Scripts/create_sawari_level.py"
 
-The GameMode creates the procedural city, taxi, passenger and HUD at runtime.
-This script creates the persistent map asset and assigns the C++ GameMode.
+This is not standalone Python: the 'unreal' module is provided by the
+running Unreal Editor and is unavailable in normal Python environments.
+
+The GameMode creates the city, taxi, passenger and HUD at runtime. This script
+creates the persistent map asset and assigns the C++ GameMode.
 """
 from pathlib import Path
 import re
